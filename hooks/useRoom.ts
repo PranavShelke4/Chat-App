@@ -1,9 +1,21 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useSocket } from "./useSocket";
-import { SOCKET_EVENTS } from "@/lib/socketEvents";
+import PusherClient from "pusher-js";
 import { MessageDoc, Member, RoomDoc } from "@/types";
+
+function makeSystemMsg(roomCode: string, content: string): MessageDoc {
+  return {
+    _id: `sys_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    roomCode,
+    senderName: "system",
+    type: "system" as const,
+    content,
+    reactions: [],
+    seenBy: [],
+    createdAt: new Date().toISOString(),
+  };
+}
 
 interface UseRoomOptions {
   roomCode: string;
@@ -12,7 +24,6 @@ interface UseRoomOptions {
 }
 
 export function useRoom({ roomCode, userName, password }: UseRoomOptions) {
-  const socket = useSocket();
   const [room, setRoom] = useState<RoomDoc | null>(null);
   const [messages, setMessages] = useState<MessageDoc[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
@@ -20,145 +31,210 @@ export function useRoom({ roomCode, userName, password }: UseRoomOptions) {
   const [connected, setConnected] = useState(false);
   const [roomError, setRoomError] = useState<string | null>(null);
   const [kicked, setKicked] = useState(false);
+
+  const pusherRef = useRef<PusherClient | null>(null);
+  const channelRef = useRef<any>(null);
   const typingTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const kickedNames = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    const onRoomJoined = ({ messages: msgs, members: mems, room: r }: any) => {
-      setMessages(msgs);
-      setMembers(mems);
-      setRoom(r);
-      setConnected(true);
-      setRoomError(null);
-    };
+    let cancelled = false;
 
-    const onRoomError = ({ message }: { message: string }) => {
-      setRoomError(message);
-    };
+    async function init() {
+      const res = await fetch("/api/rooms/join", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomCode, userName, password }),
+      });
+      const data = await res.json();
+      if (cancelled) return;
 
-    const onKicked = ({ message }: { message: string }) => {
-      setKicked(true);
-      setRoomError(message);
-    };
+      if (!res.ok) {
+        setRoomError(data.error || "Failed to join room");
+        return;
+      }
 
-    const onNewMessage = (msg: MessageDoc) => {
-      setMessages((prev) => [...prev, msg]);
-    };
+      setRoom(data.room);
+      setMessages(data.messages);
 
-    const onMemberJoined = ({ members: mems, systemMessage }: any) => {
-      setMembers(mems);
-      if (systemMessage) setMessages((prev) => [...prev, systemMessage]);
-    };
+      const pusher = new PusherClient(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
+        cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+        channelAuthorization: {
+          endpoint: "/api/pusher/auth",
+          transport: "ajax",
+          params: { userName },
+        },
+      });
+      pusherRef.current = pusher;
 
-    const onMemberLeft = ({ members: mems, systemMessage }: any) => {
-      setMembers(mems);
-      if (systemMessage) setMessages((prev) => [...prev, systemMessage]);
-    };
+      const channel = pusher.subscribe(`presence-room-${roomCode}`);
+      channelRef.current = channel;
 
-    const onTypingUpdate = ({ userName: u, isTyping }: { userName: string; isTyping: boolean }) => {
-      const timer = typingTimers.current.get(u);
-      if (timer) clearTimeout(timer);
+      channel.bind("pusher:subscription_succeeded", (members: any) => {
+        if (cancelled) return;
+        const list: Member[] = [];
+        members.each((m: any) => {
+          list.push({ name: m.info.name, socketId: m.id, joinedAt: new Date().toISOString() });
+        });
+        setMembers(list);
+        setConnected(true);
+      });
 
-      if (isTyping) {
+      channel.bind("pusher:subscription_error", () => {
+        if (cancelled) return;
+        setRoomError("Failed to connect to room");
+      });
+
+      channel.bind("pusher:member_added", (member: any) => {
+        if (cancelled) return;
+        const name: string = member.info?.name ?? "Unknown";
+        setMembers((prev) => [...prev, { name, socketId: member.id, joinedAt: new Date().toISOString() }]);
+        setMessages((prev) => [...prev, makeSystemMsg(roomCode, `${name} joined the room`)]);
+      });
+
+      channel.bind("pusher:member_removed", (member: any) => {
+        if (cancelled) return;
+        const name: string = member.info?.name ?? "Unknown";
+        setMembers((prev) => prev.filter((m) => m.socketId !== member.id));
+        if (!kickedNames.current.has(name)) {
+          setMessages((prev) => [...prev, makeSystemMsg(roomCode, `${name} left the room`)]);
+        } else {
+          kickedNames.current.delete(name);
+        }
+      });
+
+      channel.bind("new-message", (msg: MessageDoc) => {
+        if (cancelled) return;
+        setMessages((prev) => [...prev, msg]);
+      });
+
+      channel.bind("reaction-updated", ({ messageId, reactions }: any) => {
+        if (cancelled) return;
+        setMessages((prev) => prev.map((m) => (m._id === messageId ? { ...m, reactions } : m)));
+      });
+
+      channel.bind("message-deleted", ({ messageId }: any) => {
+        if (cancelled) return;
+        setMessages((prev) =>
+          prev.map((m) => (m._id === messageId ? { ...m, deletedAt: new Date().toISOString() } : m))
+        );
+      });
+
+      channel.bind("message-seen", ({ messageId, seenBy }: any) => {
+        if (cancelled) return;
+        setMessages((prev) => prev.map((m) => (m._id === messageId ? { ...m, seenBy } : m)));
+      });
+
+      channel.bind("member-kicked", ({ targetName }: { targetName: string }) => {
+        if (cancelled) return;
+        if (targetName === userName) {
+          setKicked(true);
+        } else {
+          kickedNames.current.add(targetName);
+          setMembers((prev) => prev.filter((m) => m.name !== targetName));
+          setMessages((prev) => [
+            ...prev,
+            makeSystemMsg(roomCode, `${targetName} was removed from the room`),
+          ]);
+        }
+      });
+
+      channel.bind("client-typing-start", ({ userName: u }: { userName: string }) => {
+        if (cancelled || u === userName) return;
+        const timer = typingTimers.current.get(u);
+        if (timer) clearTimeout(timer);
         setTypingUsers((prev) => (prev.includes(u) ? prev : [...prev, u]));
         const t = setTimeout(() => {
           setTypingUsers((prev) => prev.filter((n) => n !== u));
           typingTimers.current.delete(u);
         }, 3000);
         typingTimers.current.set(u, t);
-      } else {
+      });
+
+      channel.bind("client-typing-stop", ({ userName: u }: { userName: string }) => {
+        if (cancelled) return;
+        const timer = typingTimers.current.get(u);
+        if (timer) clearTimeout(timer);
         setTypingUsers((prev) => prev.filter((n) => n !== u));
-      }
-    };
+        typingTimers.current.delete(u);
+      });
+    }
 
-    const onReactionUpdated = ({ messageId, reactions }: any) => {
-      setMessages((prev) =>
-        prev.map((m) => (m._id === messageId ? { ...m, reactions } : m))
-      );
-    };
-
-    const onMessageDeleted = ({ messageId }: any) => {
-      setMessages((prev) =>
-        prev.map((m) =>
-          m._id === messageId ? { ...m, deletedAt: new Date().toISOString() } : m
-        )
-      );
-    };
-
-    const onMessageSeen = ({ messageId, seenBy }: any) => {
-      setMessages((prev) =>
-        prev.map((m) => (m._id === messageId ? { ...m, seenBy } : m))
-      );
-    };
-
-    socket.on(SOCKET_EVENTS.ROOM_ERROR, onRoomError);
-    socket.on(SOCKET_EVENTS.KICKED, onKicked);
-    socket.on(SOCKET_EVENTS.ROOM_JOINED, onRoomJoined);
-    socket.on(SOCKET_EVENTS.NEW_MESSAGE, onNewMessage);
-    socket.on(SOCKET_EVENTS.MEMBER_JOINED, onMemberJoined);
-    socket.on(SOCKET_EVENTS.MEMBER_LEFT, onMemberLeft);
-    socket.on(SOCKET_EVENTS.TYPING_UPDATE, onTypingUpdate);
-    socket.on(SOCKET_EVENTS.REACTION_UPDATED, onReactionUpdated);
-    socket.on(SOCKET_EVENTS.MESSAGE_DELETED, onMessageDeleted);
-    socket.on(SOCKET_EVENTS.MESSAGE_SEEN, onMessageSeen);
-
-    socket.emit(SOCKET_EVENTS.JOIN_ROOM, { roomCode, userName, password });
+    init();
 
     return () => {
-      socket.off(SOCKET_EVENTS.ROOM_ERROR, onRoomError);
-      socket.off(SOCKET_EVENTS.KICKED, onKicked);
-      socket.off(SOCKET_EVENTS.ROOM_JOINED, onRoomJoined);
-      socket.off(SOCKET_EVENTS.NEW_MESSAGE, onNewMessage);
-      socket.off(SOCKET_EVENTS.MEMBER_JOINED, onMemberJoined);
-      socket.off(SOCKET_EVENTS.MEMBER_LEFT, onMemberLeft);
-      socket.off(SOCKET_EVENTS.TYPING_UPDATE, onTypingUpdate);
-      socket.off(SOCKET_EVENTS.REACTION_UPDATED, onReactionUpdated);
-      socket.off(SOCKET_EVENTS.MESSAGE_DELETED, onMessageDeleted);
-      socket.off(SOCKET_EVENTS.MESSAGE_SEEN, onMessageSeen);
-      socket.emit(SOCKET_EVENTS.LEAVE_ROOM, { roomCode, userName });
+      cancelled = true;
+      typingTimers.current.forEach(clearTimeout);
+      typingTimers.current.clear();
+      if (channelRef.current) channelRef.current.unbind_all();
+      if (pusherRef.current) {
+        pusherRef.current.unsubscribe(`presence-room-${roomCode}`);
+        pusherRef.current.disconnect();
+      }
     };
   }, [roomCode, userName, password]);
 
   const sendMessage = useCallback(
-    (payload: { type: string; content: string; fileName?: string; replyTo?: string }) => {
-      socket.emit(SOCKET_EVENTS.SEND_MESSAGE, { roomCode, senderName: userName, ...payload });
+    async (payload: { type: string; content: string; fileName?: string; replyTo?: string }) => {
+      await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomCode, senderName: userName, ...payload }),
+      });
     },
-    [socket, roomCode, userName]
+    [roomCode, userName]
   );
 
   const sendTypingStart = useCallback(() => {
-    socket.emit(SOCKET_EVENTS.TYPING_START, { roomCode, userName });
-  }, [socket, roomCode, userName]);
+    channelRef.current?.trigger("client-typing-start", { userName });
+  }, [userName]);
 
   const sendTypingStop = useCallback(() => {
-    socket.emit(SOCKET_EVENTS.TYPING_STOP, { roomCode, userName });
-  }, [socket, roomCode, userName]);
+    channelRef.current?.trigger("client-typing-stop", { userName });
+  }, [userName]);
 
   const addReaction = useCallback(
-    (messageId: string, emoji: string) => {
-      socket.emit(SOCKET_EVENTS.ADD_REACTION, { messageId, emoji, userName });
+    async (messageId: string, emoji: string) => {
+      await fetch(`/api/messages/${messageId}/react`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emoji, userName }),
+      });
     },
-    [socket, userName]
+    [userName]
   );
 
   const deleteMessage = useCallback(
-    (messageId: string) => {
-      socket.emit(SOCKET_EVENTS.DELETE_MESSAGE, { messageId, userName });
+    async (messageId: string) => {
+      await fetch(`/api/messages/${messageId}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userName }),
+      });
     },
-    [socket, userName]
+    [userName]
   );
 
   const markSeen = useCallback(
-    (messageId: string) => {
-      socket.emit(SOCKET_EVENTS.SEEN_MESSAGE, { messageId, userName });
+    async (messageId: string) => {
+      await fetch(`/api/messages/${messageId}/seen`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userName }),
+      });
     },
-    [socket, userName]
+    [userName]
   );
 
   const kickMember = useCallback(
-    (targetName: string) => {
-      socket.emit(SOCKET_EVENTS.KICK_MEMBER, { roomCode, targetName, adminName: userName });
+    async (targetName: string) => {
+      await fetch("/api/rooms/kick", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomCode, targetName, adminName: userName }),
+      });
     },
-    [socket, roomCode, userName]
+    [roomCode, userName]
   );
 
   return {
