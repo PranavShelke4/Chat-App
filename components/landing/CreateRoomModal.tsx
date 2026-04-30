@@ -12,18 +12,19 @@ interface Props {
 export function CreateRoomModal({ onClose }: Props) {
   const router = useRouter();
   const [name, setName] = useState("");
+  const [roomName, setRoomName] = useState("");
   const [loading, setLoading] = useState(false);
   const [created, setCreated] = useState<{ code: string; roomName: string } | null>(null);
   const [copied, setCopied] = useState(false);
 
   async function handleCreate() {
-    if (!name.trim()) return;
+    if (!name.trim() || !roomName.trim()) return;
     setLoading(true);
     try {
       const res = await fetch("/api/rooms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: "My Chat Room", adminName: name.trim() }),
+        body: JSON.stringify({ name: roomName.trim(), adminName: name.trim() }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -60,14 +61,25 @@ export function CreateRoomModal({ onClose }: Props) {
         className="w-full max-w-md bg-slate-900 border border-slate-700/50 rounded-2xl p-6 shadow-2xl shadow-violet-950/20"
       >
         <h2 className="text-xl font-semibold text-white mb-1">Create a Room</h2>
-        <p className="text-slate-400 text-sm mb-6">Enter your name to create a new chat room</p>
+        <p className="text-slate-400 text-sm mb-6">Give your room a name and enter your display name</p>
 
         {!created ? (
           <>
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-slate-300 mb-2">Room Name</label>
+              <input
+                autoFocus
+                value={roomName}
+                onChange={(e) => setRoomName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+                placeholder="e.g. Weekend Trip Planning"
+                maxLength={40}
+                className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition"
+              />
+            </div>
             <div className="mb-4">
               <label className="block text-sm font-medium text-slate-300 mb-2">Your Name</label>
               <input
-                autoFocus
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleCreate()}
@@ -85,7 +97,7 @@ export function CreateRoomModal({ onClose }: Props) {
               </button>
               <button
                 onClick={handleCreate}
-                disabled={!name.trim() || loading}
+                disabled={!name.trim() || !roomName.trim() || loading}
                 className="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed transition"
               >
                 {loading ? "Creating..." : "Create Room"}

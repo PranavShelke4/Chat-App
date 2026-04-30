@@ -119,6 +119,22 @@ export function initSocketHandlers(io: SocketServer) {
       if (msg) io.to(msg.roomCode).emit(SOCKET_EVENTS.MESSAGE_SEEN, { messageId, seenBy: msg.seenBy });
     });
 
+    socket.on(SOCKET_EVENTS.LEAVE_ROOM, async ({ roomCode, userName }: { roomCode: string; userName: string }) => {
+      const members = roomMembers.get(roomCode) ?? [];
+      const updated = members.filter((m) => m.socketId !== socket.id);
+      roomMembers.set(roomCode, updated);
+      socket.leave(roomCode);
+
+      await connectDB();
+      const systemMsg = await Message.create({
+        roomCode,
+        senderName: "system",
+        type: "system",
+        content: `${userName} left the room`,
+      });
+      io.to(roomCode).emit(SOCKET_EVENTS.MEMBER_LEFT, { userName, members: updated, systemMessage: systemMsg });
+    });
+
     socket.on("disconnect", async () => {
       const { roomCode, userName } = socket.data;
       if (!roomCode || !userName) return;

@@ -30,7 +30,7 @@
 }
 
 /* Light mode overrides */
-html.light body {
+html:not(.dark) body {
   background-color: #f8fafc;
   color: #0f172a;
 }

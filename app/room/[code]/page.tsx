@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ChatRoom } from "@/components/chat/ChatRoom";
 import { JoinRoomModal } from "@/components/landing/JoinRoomModal";
 
 interface Props {
-  params: { code: string };
+  params: Promise<{ code: string }>;
 }
 
 export default function RoomPage({ params }: Props) {
+  const { code: rawCode } = use(params);
   const searchParams = useSearchParams();
   const router = useRouter();
   const nameFromUrl = searchParams.get("name");
@@ -17,7 +18,7 @@ export default function RoomPage({ params }: Props) {
   const [verified, setVerified] = useState(false);
   const [notFound, setNotFound] = useState(false);
 
-  const code = params.code.toUpperCase();
+  const code = rawCode.toUpperCase();
 
   useEffect(() => {
     async function verify() {

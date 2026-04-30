@@ -22,28 +22,28 @@ export function useRoom({ roomCode, userName }: UseRoomOptions) {
   useEffect(() => {
     socket.emit(SOCKET_EVENTS.JOIN_ROOM, { roomCode, userName });
 
-    socket.on(SOCKET_EVENTS.ROOM_JOINED, ({ messages: msgs, members: mems, room: r }) => {
+    const onRoomJoined = ({ messages: msgs, members: mems, room: r }: any) => {
       setMessages(msgs);
       setMembers(mems);
       setRoom(r);
       setConnected(true);
-    });
+    };
 
-    socket.on(SOCKET_EVENTS.NEW_MESSAGE, (msg: MessageDoc) => {
+    const onNewMessage = (msg: MessageDoc) => {
       setMessages((prev) => [...prev, msg]);
-    });
+    };
 
-    socket.on(SOCKET_EVENTS.MEMBER_JOINED, ({ members: mems, systemMessage }) => {
+    const onMemberJoined = ({ members: mems, systemMessage }: any) => {
       setMembers(mems);
       if (systemMessage) setMessages((prev) => [...prev, systemMessage]);
-    });
+    };
 
-    socket.on(SOCKET_EVENTS.MEMBER_LEFT, ({ members: mems, systemMessage }) => {
+    const onMemberLeft = ({ members: mems, systemMessage }: any) => {
       setMembers(mems);
       if (systemMessage) setMessages((prev) => [...prev, systemMessage]);
-    });
+    };
 
-    socket.on(SOCKET_EVENTS.TYPING_UPDATE, ({ userName: u, isTyping }: { userName: string; isTyping: boolean }) => {
+    const onTypingUpdate = ({ userName: u, isTyping }: { userName: string; isTyping: boolean }) => {
       const timer = typingTimers.current.get(u);
       if (timer) clearTimeout(timer);
 
@@ -57,37 +57,46 @@ export function useRoom({ roomCode, userName }: UseRoomOptions) {
       } else {
         setTypingUsers((prev) => prev.filter((n) => n !== u));
       }
-    });
+    };
 
-    socket.on(SOCKET_EVENTS.REACTION_UPDATED, ({ messageId, reactions }) => {
+    const onReactionUpdated = ({ messageId, reactions }: any) => {
       setMessages((prev) =>
         prev.map((m) => (m._id === messageId ? { ...m, reactions } : m))
       );
-    });
+    };
 
-    socket.on(SOCKET_EVENTS.MESSAGE_DELETED, ({ messageId }) => {
+    const onMessageDeleted = ({ messageId }: any) => {
       setMessages((prev) =>
         prev.map((m) =>
           m._id === messageId ? { ...m, deletedAt: new Date().toISOString() } : m
         )
       );
-    });
+    };
 
-    socket.on(SOCKET_EVENTS.MESSAGE_SEEN, ({ messageId, seenBy }) => {
+    const onMessageSeen = ({ messageId, seenBy }: any) => {
       setMessages((prev) =>
         prev.map((m) => (m._id === messageId ? { ...m, seenBy } : m))
       );
-    });
+    };
+
+    socket.on(SOCKET_EVENTS.ROOM_JOINED, onRoomJoined);
+    socket.on(SOCKET_EVENTS.NEW_MESSAGE, onNewMessage);
+    socket.on(SOCKET_EVENTS.MEMBER_JOINED, onMemberJoined);
+    socket.on(SOCKET_EVENTS.MEMBER_LEFT, onMemberLeft);
+    socket.on(SOCKET_EVENTS.TYPING_UPDATE, onTypingUpdate);
+    socket.on(SOCKET_EVENTS.REACTION_UPDATED, onReactionUpdated);
+    socket.on(SOCKET_EVENTS.MESSAGE_DELETED, onMessageDeleted);
+    socket.on(SOCKET_EVENTS.MESSAGE_SEEN, onMessageSeen);
 
     return () => {
-      socket.off(SOCKET_EVENTS.ROOM_JOINED);
-      socket.off(SOCKET_EVENTS.NEW_MESSAGE);
-      socket.off(SOCKET_EVENTS.MEMBER_JOINED);
-      socket.off(SOCKET_EVENTS.MEMBER_LEFT);
-      socket.off(SOCKET_EVENTS.TYPING_UPDATE);
-      socket.off(SOCKET_EVENTS.REACTION_UPDATED);
-      socket.off(SOCKET_EVENTS.MESSAGE_DELETED);
-      socket.off(SOCKET_EVENTS.MESSAGE_SEEN);
+      socket.off(SOCKET_EVENTS.ROOM_JOINED, onRoomJoined);
+      socket.off(SOCKET_EVENTS.NEW_MESSAGE, onNewMessage);
+      socket.off(SOCKET_EVENTS.MEMBER_JOINED, onMemberJoined);
+      socket.off(SOCKET_EVENTS.MEMBER_LEFT, onMemberLeft);
+      socket.off(SOCKET_EVENTS.TYPING_UPDATE, onTypingUpdate);
+      socket.off(SOCKET_EVENTS.REACTION_UPDATED, onReactionUpdated);
+      socket.off(SOCKET_EVENTS.MESSAGE_DELETED, onMessageDeleted);
+      socket.off(SOCKET_EVENTS.MESSAGE_SEEN, onMessageSeen);
       socket.emit(SOCKET_EVENTS.LEAVE_ROOM, { roomCode, userName });
     };
   }, [roomCode, userName]);
