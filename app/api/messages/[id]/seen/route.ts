@@ -11,6 +11,11 @@ export async function POST(
     const { id } = await params;
     const { userName } = await req.json();
 
+    // System messages use synthetic IDs that are not MongoDB ObjectIds
+    if (!/^[a-f\d]{24}$/i.test(id)) {
+      return NextResponse.json({ ok: true });
+    }
+
     await connectDB();
     await Message.updateOne(
       { _id: id, seenBy: { $ne: userName } },

@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -E \"\\(^[^/]*$|app|components|lib|public\\)\")",
+      "Bash(npm install *)",
+      "Bash(node -e \"const wp = require\\('web-push'\\); console.log\\(JSON.stringify\\(wp.generateVAPIDKeys\\(\\)\\)\\)\")",
+      "Bash(npx tsc *)",
+      "Bash(npm run *)"
+    ]
+  }
+}

@@ -32,7 +32,12 @@ export function MessageList({
 
   useEffect(() => {
     const lastMsg = messages[messages.length - 1];
-    if (lastMsg && lastMsg.senderName !== userName && !lastMsg.seenBy.includes(userName)) {
+    if (
+      lastMsg &&
+      lastMsg.type !== "system" &&
+      lastMsg.senderName !== userName &&
+      !lastMsg.seenBy.includes(userName)
+    ) {
       onSeen(lastMsg._id);
     }
   }, [messages]);

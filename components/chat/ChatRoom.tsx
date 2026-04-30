@@ -10,6 +10,7 @@ import { MessageList } from "./MessageList";
 import { MessageInput } from "./MessageInput";
 import { MessageDoc, RoomDoc } from "@/types";
 import { RoomRole, upsertRecentRoom } from "@/lib/localRooms";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 interface Props {
   roomCode: string;
@@ -36,6 +37,8 @@ export function ChatRoom({ roomCode, userName, password, onJoined }: Props) {
     markSeen,
     kickMember,
   } = useRoom({ roomCode, userName, password });
+
+  const { permission: notifPermission, requestPermission } = usePushNotifications(userName, roomCode);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [replyTo, setReplyTo] = useState<MessageDoc | null>(null);
@@ -177,6 +180,30 @@ export function ChatRoom({ roomCode, userName, password, onJoined }: Props) {
         members={members}
         onToggleSidebar={() => setSidebarOpen((o) => !o)}
       />
+
+      {notifPermission !== null && notifPermission !== "granted" && (
+        <div className="flex items-center gap-3 px-4 py-2.5 bg-slate-900/60 border-b border-slate-800/40">
+          <svg className="w-4 h-4 text-violet-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+          </svg>
+          <span className="text-slate-400 flex-1 text-xs">Get notified for new messages even when the app is closed.</span>
+          <button
+            onClick={async () => {
+              if (notifPermission === "denied") {
+                toast("To enable notifications, click the lock icon in your browser's address bar and allow notifications.", { icon: "🔔", duration: 5000 });
+                return;
+              }
+              await requestPermission();
+            }}
+            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 active:bg-violet-700 text-white text-xs font-medium transition"
+          >
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+            Turn on notifications
+          </button>
+        </div>
+      )}
 
       <div className="flex flex-1 min-h-0 overflow-hidden relative">
         <div className="flex flex-col flex-1 overflow-hidden">
