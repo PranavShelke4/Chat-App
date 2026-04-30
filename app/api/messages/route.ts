@@ -6,14 +6,13 @@ import { PushSubscription } from "@/models/PushSubscription";
 import { pusher, CHANNEL } from "@/lib/pusher";
 import webpush from "web-push";
 
-webpush.setVapidDetails(
-  process.env.VAPID_EMAIL!,
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!
-);
-
 export async function POST(req: NextRequest) {
   try {
+    webpush.setVapidDetails(
+      process.env.VAPID_EMAIL!,
+      process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
+      process.env.VAPID_PRIVATE_KEY!
+    );
     const { roomCode, senderName, type, content, fileName, replyTo } = await req.json();
     if (!roomCode || !senderName || !type || !content) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
