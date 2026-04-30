@@ -38,10 +38,10 @@ export function MessageList({
   }, [messages]);
 
   return (
-    <div className="flex-1 overflow-y-auto py-4 space-y-0.5">
+    <div className="flex-1 min-h-0 overflow-y-auto py-3 sm:py-4 px-2 sm:px-4 space-y-0.5">
       {messages.length === 0 && (
-        <div className="flex flex-col items-center justify-center h-full text-center p-8">
-          <div className="w-16 h-16 rounded-2xl bg-slate-800/60 flex items-center justify-center mb-4">
+        <div className="flex flex-col items-center justify-center min-h-[50vh] text-center p-6 sm:p-8">
+          <div className="w-16 h-16 rounded-3xl bg-slate-800/60 flex items-center justify-center mb-4">
             <svg
               className="w-8 h-8 text-slate-600"
               fill="currentColor"
@@ -67,7 +67,7 @@ export function MessageList({
       ))}
 
       <TypingIndicator typingUsers={typingUsers.filter((u) => u !== userName)} />
-      <div ref={bottomRef} />
+      <div ref={bottomRef} className="h-2" />
     </div>
   );
 }

@@ -18,7 +18,7 @@ export function TypingIndicator({ typingUsers }: { typingUsers: string[] }) {
         initial={{ opacity: 0, y: 4 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 4 }}
-        className="flex items-center gap-2 px-4 py-1"
+        className="flex items-center gap-2 px-3 sm:px-4 py-1"
       >
         <div className="flex gap-1 items-center">
           {[0, 1, 2].map((i) => (

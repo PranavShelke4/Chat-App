@@ -29,33 +29,52 @@ export function RoomHeader({ room, userName, members, onToggleSidebar }: Props) 
 
   return (
     <>
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800/60 bg-slate-950/80 backdrop-blur-md">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-600 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow">
-            {room.name.charAt(0).toUpperCase()}
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="font-semibold text-white text-sm">{room.name}</h1>
-              {room.locked && (
-                <span className="flex items-center gap-1 text-xs text-red-400 bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded-md">
-                  <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
-                  Locked
-                </span>
-              )}
+      <div className="flex flex-col gap-3 px-3 sm:px-4 py-3 border-b border-slate-800/60 bg-slate-950/85 backdrop-blur-md">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-600 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow flex-shrink-0">
+              {room.name.charAt(0).toUpperCase()}
             </div>
-            <p className="text-slate-500 text-xs">{members.length} online</p>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="font-semibold text-white text-sm sm:text-base truncate max-w-[12rem] sm:max-w-none">
+                  {room.name}
+                </h1>
+                {room.locked && (
+                  <span className="flex items-center gap-1 text-[11px] sm:text-xs text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full">
+                    <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    Locked
+                  </span>
+                )}
+              </div>
+              <p className="text-slate-500 text-xs mt-0.5">{members.length} online</p>
+            </div>
           </div>
+
+          <button
+            onClick={onToggleSidebar}
+            className="lg:hidden w-10 h-10 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700/50 flex items-center justify-center transition text-slate-300 hover:text-white flex-shrink-0"
+            aria-label="Open members"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
+              />
+            </svg>
+          </button>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
           <button
             onClick={copyCode}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700/50 transition group"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700/50 transition group min-w-0"
           >
-            <span className="text-violet-400 font-mono text-xs font-bold tracking-widest">
+            <span className="text-violet-400 font-mono text-xs font-bold tracking-widest truncate max-w-[7rem] sm:max-w-none">
               {room.code}
             </span>
             <svg
@@ -76,7 +95,7 @@ export function RoomHeader({ room, userName, members, onToggleSidebar }: Props) 
           {isAdmin && (
             <button
               onClick={() => setShowSecurity(true)}
-              className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-violet-600/20 border border-slate-700/50 hover:border-violet-500/40 flex items-center justify-center transition text-slate-400 hover:text-violet-400"
+              className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-violet-600/20 border border-slate-700/50 hover:border-violet-500/40 flex items-center justify-center transition text-slate-400 hover:text-violet-400"
               title="Security Panel"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -87,7 +106,7 @@ export function RoomHeader({ room, userName, members, onToggleSidebar }: Props) 
 
           <button
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700/50 flex items-center justify-center transition text-slate-400 hover:text-white"
+            className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700/50 flex items-center justify-center transition text-slate-400 hover:text-white"
           >
             {theme === "dark" ? (
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -102,7 +121,7 @@ export function RoomHeader({ room, userName, members, onToggleSidebar }: Props) 
 
           <button
             onClick={onToggleSidebar}
-            className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700/50 flex items-center justify-center transition text-slate-400 hover:text-white"
+            className="hidden lg:flex w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700/50 items-center justify-center transition text-slate-400 hover:text-white"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -116,11 +135,7 @@ export function RoomHeader({ room, userName, members, onToggleSidebar }: Props) 
         </div>
       </div>
 
-      <AnimatePresence>
-        {showSecurity && (
-          <OtpSecurityModal room={room} onClose={() => setShowSecurity(false)} />
-        )}
-      </AnimatePresence>
+      <AnimatePresence>{showSecurity && <OtpSecurityModal room={room} onClose={() => setShowSecurity(false)} />}</AnimatePresence>
     </>
   );
 }

@@ -170,7 +170,7 @@ export function ChatRoom({ roomCode, userName, password, onJoined }: Props) {
   }
 
   return (
-    <div className="h-screen bg-slate-950 flex flex-col overflow-hidden">
+    <div className="h-dvh bg-slate-950 flex flex-col overflow-hidden">
       <RoomHeader
         room={room}
         userName={userName}
@@ -178,7 +178,7 @@ export function ChatRoom({ roomCode, userName, password, onJoined }: Props) {
         onToggleSidebar={() => setSidebarOpen((o) => !o)}
       />
 
-      <div className="flex flex-1 overflow-hidden relative">
+      <div className="flex flex-1 min-h-0 overflow-hidden relative">
         <div className="flex flex-col flex-1 overflow-hidden">
           <MessageList
             messages={messages}

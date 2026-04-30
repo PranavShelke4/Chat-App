@@ -45,17 +45,17 @@ export function MessageBubble({ message, isOwn, userName, onReply, onReact, onDe
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`flex gap-2 group px-4 ${isOwn ? "flex-row-reverse" : "flex-row"} mb-1`}
+      className={`flex gap-2 group px-2 sm:px-4 ${isOwn ? "flex-row-reverse" : "flex-row"} mb-1`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
       {!isOwn && (
-        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-1">
+        <div className="w-8 h-8 sm:w-7 sm:h-7 rounded-full bg-gradient-to-br from-slate-600 to-slate-700 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-1">
           {message.senderName.charAt(0).toUpperCase()}
         </div>
       )}
 
-      <div className={`flex flex-col max-w-[70%] ${isOwn ? "items-end" : "items-start"}`}>
+      <div className={`flex flex-col max-w-[82%] sm:max-w-[70%] ${isOwn ? "items-end" : "items-start"}`}>
         {!isOwn && (
           <span className="text-xs text-slate-500 mb-1 ml-1">{message.senderName}</span>
         )}
@@ -100,7 +100,7 @@ export function MessageBubble({ message, isOwn, userName, onReply, onReact, onDe
                 exit={{ opacity: 0, scale: 0.9 }}
                 className={`absolute top-1/2 -translate-y-1/2 ${
                   isOwn ? "-left-28" : "-right-28"
-                } flex items-center gap-1 bg-slate-800 border border-slate-700/50 rounded-xl p-1 shadow-lg z-10`}
+                } hidden sm:flex items-center gap-1 bg-slate-800 border border-slate-700/50 rounded-xl p-1 shadow-lg z-10`}
               >
                 <button
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
