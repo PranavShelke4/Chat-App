@@ -9,8 +9,12 @@ export const SOCKET_EVENTS = {
   DELETE_MESSAGE: "delete-message",
   SEEN_MESSAGE: "seen-message",
 
+  // Client → Server (admin actions)
+  KICK_MEMBER: "kick-member",
+
   // Server → Client
   ROOM_ERROR: "room-error",
+  KICKED: "kicked",
   ROOM_JOINED: "room-joined",
   NEW_MESSAGE: "new-message",
   MEMBER_JOINED: "member-joined",

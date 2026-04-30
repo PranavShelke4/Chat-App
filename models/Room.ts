@@ -5,6 +5,7 @@ export interface IRoom extends Document {
   name: string;
   adminName: string;
   password: string | null;
+  locked: boolean;
   createdAt: Date;
   lastActivity: Date;
 }
@@ -15,6 +16,7 @@ const RoomSchema = new Schema<IRoom>(
     name: { type: String, required: true },
     adminName: { type: String, required: true },
     password: { type: String, default: null },
+    locked: { type: Boolean, default: false },
     lastActivity: { type: Date, default: Date.now },
   },
   { timestamps: true }

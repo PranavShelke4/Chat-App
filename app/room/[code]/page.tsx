@@ -14,12 +14,20 @@ export default function RoomPage({ params }: Props) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const nameFromUrl = searchParams.get("name");
-  const passwordFromUrl = searchParams.get("password") ?? undefined;
+
   const [userName, setUserName] = useState<string | null>(nameFromUrl);
+  const [password, setPassword] = useState<string | undefined>(undefined);
+  const [sessionChecked, setSessionChecked] = useState(false);
   const [verified, setVerified] = useState(false);
   const [notFound, setNotFound] = useState(false);
 
   const code = rawCode.toUpperCase();
+
+  useEffect(() => {
+    const stored = sessionStorage.getItem(`room_otp_${code}`);
+    if (stored) setPassword(stored);
+    setSessionChecked(true);
+  }, [code]);
 
   useEffect(() => {
     async function verify() {
@@ -38,12 +46,7 @@ export default function RoomPage({ params }: Props) {
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6">
         <div className="text-center">
           <div className="w-16 h-16 rounded-2xl bg-slate-800 flex items-center justify-center mx-auto mb-4">
-            <svg
-              className="w-8 h-8 text-slate-500"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
+            <svg className="w-8 h-8 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -53,9 +56,7 @@ export default function RoomPage({ params }: Props) {
             </svg>
           </div>
           <h1 className="text-xl font-semibold text-white mb-2">Room Not Found</h1>
-          <p className="text-slate-400 text-sm mb-6">
-            This room doesn&apos;t exist or has expired.
-          </p>
+          <p className="text-slate-400 text-sm mb-6">This room doesn&apos;t exist or has expired.</p>
           <button
             onClick={() => router.push("/")}
             className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white font-medium transition"
@@ -67,7 +68,7 @@ export default function RoomPage({ params }: Props) {
     );
   }
 
-  if (!verified) {
+  if (!verified || !sessionChecked) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <div className="w-10 h-10 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
@@ -83,5 +84,5 @@ export default function RoomPage({ params }: Props) {
     );
   }
 
-  return <ChatRoom roomCode={code} userName={userName} password={passwordFromUrl} />;
+  return <ChatRoom roomCode={code} userName={userName} password={password} />;
 }

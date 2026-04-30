@@ -48,6 +48,7 @@ export function JoinRoomModal({ onClose, prefillCode = "" }: Props) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+      sessionStorage.setItem(`room_otp_${code.trim().toUpperCase()}`, otp.trim());
       setStep("name");
     } catch (err: any) {
       toast.error(err.message || "Invalid OTP");
@@ -58,9 +59,7 @@ export function JoinRoomModal({ onClose, prefillCode = "" }: Props) {
 
   function handleJoin() {
     if (!name.trim()) return;
-    const params = new URLSearchParams({ name: name.trim() });
-    if (passwordProtected && otp) params.set("password", otp.trim());
-    router.push(`/room/${code.trim().toUpperCase()}?${params.toString()}`);
+    router.push(`/room/${code.trim().toUpperCase()}?name=${encodeURIComponent(name.trim())}`);
   }
 
   return (

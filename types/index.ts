@@ -4,6 +4,7 @@ export interface RoomDoc {
   name: string;
   adminName: string;
   passwordProtected: boolean;
+  locked: boolean;
   createdAt: string;
   lastActivity: string;
 }

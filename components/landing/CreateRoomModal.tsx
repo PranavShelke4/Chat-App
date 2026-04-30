@@ -31,6 +31,9 @@ export function CreateRoomModal({ onClose }: Props) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setCreated({ code: data.code, roomName: data.name, password: data.password ?? null });
+      if (data.password) {
+        sessionStorage.setItem(`room_otp_${data.code}`, data.password);
+      }
     } catch (err: any) {
       toast.error(err.message || "Failed to create room");
     } finally {
@@ -56,9 +59,7 @@ export function CreateRoomModal({ onClose }: Props) {
 
   function enterRoom() {
     if (!created) return;
-    const params = new URLSearchParams({ name });
-    if (created.password) params.set("password", created.password);
-    router.push(`/room/${created.code}?${params.toString()}`);
+    router.push(`/room/${created.code}?name=${encodeURIComponent(name)}`);
   }
 
   return (

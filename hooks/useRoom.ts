@@ -19,6 +19,7 @@ export function useRoom({ roomCode, userName, password }: UseRoomOptions) {
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const [connected, setConnected] = useState(false);
   const [roomError, setRoomError] = useState<string | null>(null);
+  const [kicked, setKicked] = useState(false);
   const typingTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   useEffect(() => {
@@ -33,6 +34,11 @@ export function useRoom({ roomCode, userName, password }: UseRoomOptions) {
     };
 
     const onRoomError = ({ message }: { message: string }) => {
+      setRoomError(message);
+    };
+
+    const onKicked = ({ message }: { message: string }) => {
+      setKicked(true);
       setRoomError(message);
     };
 
@@ -87,6 +93,7 @@ export function useRoom({ roomCode, userName, password }: UseRoomOptions) {
     };
 
     socket.on(SOCKET_EVENTS.ROOM_ERROR, onRoomError);
+    socket.on(SOCKET_EVENTS.KICKED, onKicked);
     socket.on(SOCKET_EVENTS.ROOM_JOINED, onRoomJoined);
     socket.on(SOCKET_EVENTS.NEW_MESSAGE, onNewMessage);
     socket.on(SOCKET_EVENTS.MEMBER_JOINED, onMemberJoined);
@@ -98,6 +105,7 @@ export function useRoom({ roomCode, userName, password }: UseRoomOptions) {
 
     return () => {
       socket.off(SOCKET_EVENTS.ROOM_ERROR, onRoomError);
+      socket.off(SOCKET_EVENTS.KICKED, onKicked);
       socket.off(SOCKET_EVENTS.ROOM_JOINED, onRoomJoined);
       socket.off(SOCKET_EVENTS.NEW_MESSAGE, onNewMessage);
       socket.off(SOCKET_EVENTS.MEMBER_JOINED, onMemberJoined);
@@ -146,6 +154,13 @@ export function useRoom({ roomCode, userName, password }: UseRoomOptions) {
     [socket, userName]
   );
 
+  const kickMember = useCallback(
+    (targetName: string) => {
+      socket.emit(SOCKET_EVENTS.KICK_MEMBER, { roomCode, targetName, adminName: userName });
+    },
+    [socket, roomCode, userName]
+  );
+
   return {
     room,
     messages,
@@ -153,11 +168,13 @@ export function useRoom({ roomCode, userName, password }: UseRoomOptions) {
     typingUsers,
     connected,
     roomError,
+    kicked,
     sendMessage,
     sendTypingStart,
     sendTypingStop,
     addReaction,
     deleteMessage,
     markSeen,
+    kickMember,
   };
 }

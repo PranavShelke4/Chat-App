@@ -47,6 +47,11 @@ export function initSocketHandlers(io: SocketServer) {
         return;
       }
 
+      if (room.locked && userName !== room.adminName) {
+        socket.emit(SOCKET_EVENTS.ROOM_ERROR, { message: "Room is locked. Ask the admin to unlock it." });
+        return;
+      }
+
       socket.join(roomCode);
       socket.data.roomCode = roomCode;
       socket.data.userName = userName;
@@ -71,6 +76,7 @@ export function initSocketHandlers(io: SocketServer) {
           name: room.name,
           adminName: room.adminName,
           passwordProtected: !!room.password,
+          locked: room.locked,
         },
       });
 
@@ -145,6 +151,32 @@ export function initSocketHandlers(io: SocketServer) {
       await Message.updateOne({ _id: messageId, seenBy: { $ne: userName } }, { $push: { seenBy: userName } });
       const msg = await Message.findById(messageId, "seenBy roomCode").lean() as any;
       if (msg) io.to(msg.roomCode).emit(SOCKET_EVENTS.MESSAGE_SEEN, { messageId, seenBy: msg.seenBy });
+    });
+
+    socket.on(SOCKET_EVENTS.KICK_MEMBER, async ({
+      roomCode,
+      targetName,
+      adminName,
+    }: { roomCode: string; targetName: string; adminName: string }) => {
+      await connectDB();
+      const room = await Room.findOne({ code: roomCode });
+      if (!room || room.adminName !== adminName) return;
+
+      const members = roomMembers.get(roomCode) ?? [];
+      const target = members.find((m) => m.name === targetName);
+      if (target) {
+        const targetSocket = io.sockets.sockets.get(target.socketId);
+        if (targetSocket) {
+          targetSocket.emit(SOCKET_EVENTS.KICKED, { message: "You were removed from the room by the admin." });
+          targetSocket.leave(roomCode);
+        }
+      }
+
+      const updated = members.filter((m) => m.name !== targetName);
+      roomMembers.set(roomCode, updated);
+
+      const systemMsg = makeSystemMsg(roomCode, `${targetName} was removed from the room`);
+      io.to(roomCode).emit(SOCKET_EVENTS.MEMBER_LEFT, { userName: targetName, members: updated, systemMessage: systemMsg });
     });
 
     socket.on(SOCKET_EVENTS.LEAVE_ROOM, ({ roomCode, userName }: { roomCode: string; userName: string }) => {
