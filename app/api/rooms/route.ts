@@ -3,9 +3,13 @@ import { connectDB } from "@/lib/mongodb";
 import { Room } from "@/models/Room";
 import { generateRoomCode } from "@/lib/roomCode";
 
+function generateOTP(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const { name, adminName } = await req.json();
+    const { name, adminName, enablePassword } = await req.json();
     if (!name?.trim() || !adminName?.trim()) {
       return NextResponse.json({ error: "name and adminName are required" }, { status: 400 });
     }
@@ -19,11 +23,14 @@ export async function POST(req: NextRequest) {
       attempts++;
     }
 
-    const room = await Room.create({ code, name: name.trim(), adminName: adminName.trim() });
+    const password = enablePassword ? generateOTP() : null;
+    const room = await Room.create({ code, name: name.trim(), adminName: adminName.trim(), password });
+
     return NextResponse.json({
       code: room.code,
       name: room.name,
       adminName: room.adminName,
+      password: room.password,
       createdAt: room.createdAt,
     });
   } catch (err) {
@@ -47,6 +54,7 @@ export async function GET(req: NextRequest) {
       code: room.code,
       name: room.name,
       adminName: room.adminName,
+      passwordProtected: !!room.password,
       createdAt: room.createdAt,
     });
   } catch (err) {

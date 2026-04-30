@@ -14,6 +14,7 @@ export default function RoomPage({ params }: Props) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const nameFromUrl = searchParams.get("name");
+  const passwordFromUrl = searchParams.get("password") ?? undefined;
   const [userName, setUserName] = useState<string | null>(nameFromUrl);
   const [verified, setVerified] = useState(false);
   const [notFound, setNotFound] = useState(false);
@@ -82,5 +83,5 @@ export default function RoomPage({ params }: Props) {
     );
   }
 
-  return <ChatRoom roomCode={code} userName={userName} />;
+  return <ChatRoom roomCode={code} userName={userName} password={passwordFromUrl} />;
 }

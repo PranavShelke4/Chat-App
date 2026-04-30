@@ -10,6 +10,7 @@ export const SOCKET_EVENTS = {
   SEEN_MESSAGE: "seen-message",
 
   // Server → Client
+  ROOM_ERROR: "room-error",
   ROOM_JOINED: "room-joined",
   NEW_MESSAGE: "new-message",
   MEMBER_JOINED: "member-joined",

@@ -7,16 +7,45 @@ import { Member } from "../types";
 
 const roomMembers = new Map<string, Member[]>();
 
+function makeSystemMsg(roomCode: string, content: string) {
+  return {
+    _id: `sys_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    roomCode,
+    senderName: "system",
+    type: "system" as const,
+    content,
+    reactions: [],
+    seenBy: [],
+    createdAt: new Date().toISOString(),
+  };
+}
+
 export function initSocketHandlers(io: SocketServer) {
   io.on("connection", (socket) => {
     console.log("[socket] connected:", socket.id);
 
-    socket.on(SOCKET_EVENTS.JOIN_ROOM, async ({ roomCode, userName }: { roomCode: string; userName: string }) => {
+    socket.on(SOCKET_EVENTS.JOIN_ROOM, async ({
+      roomCode,
+      userName,
+      password,
+    }: {
+      roomCode: string;
+      userName: string;
+      password?: string;
+    }) => {
       await connectDB();
 
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
       const room = await Room.findOne({ code: roomCode, lastActivity: { $gte: sevenDaysAgo } });
-      if (!room) { socket.emit("error", { message: "Room not found or expired" }); return; }
+      if (!room) {
+        socket.emit(SOCKET_EVENTS.ROOM_ERROR, { message: "Room not found or expired" });
+        return;
+      }
+
+      if (room.password && room.password !== password) {
+        socket.emit(SOCKET_EVENTS.ROOM_ERROR, { message: "Invalid OTP" });
+        return;
+      }
 
       socket.join(roomCode);
       socket.data.roomCode = roomCode;
@@ -37,16 +66,15 @@ export function initSocketHandlers(io: SocketServer) {
       socket.emit(SOCKET_EVENTS.ROOM_JOINED, {
         messages: messages.reverse(),
         members,
-        room: { code: room.code, name: room.name, adminName: room.adminName },
+        room: {
+          code: room.code,
+          name: room.name,
+          adminName: room.adminName,
+          passwordProtected: !!room.password,
+        },
       });
 
-      const systemMsg = await Message.create({
-        roomCode,
-        senderName: "system",
-        type: "system",
-        content: `${userName} joined the room`,
-      });
-
+      const systemMsg = makeSystemMsg(roomCode, `${userName} joined the room`);
       io.to(roomCode).emit(SOCKET_EVENTS.MEMBER_JOINED, { userName, members, systemMessage: systemMsg });
       await Room.updateOne({ code: roomCode }, { lastActivity: new Date() });
     });
@@ -119,23 +147,17 @@ export function initSocketHandlers(io: SocketServer) {
       if (msg) io.to(msg.roomCode).emit(SOCKET_EVENTS.MESSAGE_SEEN, { messageId, seenBy: msg.seenBy });
     });
 
-    socket.on(SOCKET_EVENTS.LEAVE_ROOM, async ({ roomCode, userName }: { roomCode: string; userName: string }) => {
+    socket.on(SOCKET_EVENTS.LEAVE_ROOM, ({ roomCode, userName }: { roomCode: string; userName: string }) => {
       const members = roomMembers.get(roomCode) ?? [];
       const updated = members.filter((m) => m.socketId !== socket.id);
       roomMembers.set(roomCode, updated);
       socket.leave(roomCode);
 
-      await connectDB();
-      const systemMsg = await Message.create({
-        roomCode,
-        senderName: "system",
-        type: "system",
-        content: `${userName} left the room`,
-      });
+      const systemMsg = makeSystemMsg(roomCode, `${userName} left the room`);
       io.to(roomCode).emit(SOCKET_EVENTS.MEMBER_LEFT, { userName, members: updated, systemMessage: systemMsg });
     });
 
-    socket.on("disconnect", async () => {
+    socket.on("disconnect", () => {
       const { roomCode, userName } = socket.data;
       if (!roomCode || !userName) return;
 
@@ -143,13 +165,7 @@ export function initSocketHandlers(io: SocketServer) {
       const updated = members.filter((m) => m.socketId !== socket.id);
       roomMembers.set(roomCode, updated);
 
-      await connectDB();
-      const systemMsg = await Message.create({
-        roomCode,
-        senderName: "system",
-        type: "system",
-        content: `${userName} left the room`,
-      });
+      const systemMsg = makeSystemMsg(roomCode, `${userName} left the room`);
       io.to(roomCode).emit(SOCKET_EVENTS.MEMBER_LEFT, { userName, members: updated, systemMessage: systemMsg });
     });
   });

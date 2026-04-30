@@ -13,10 +13,12 @@ interface Props {
 export function JoinRoomModal({ onClose, prefillCode = "" }: Props) {
   const router = useRouter();
   const [code, setCode] = useState(prefillCode.toUpperCase());
+  const [otp, setOtp] = useState("");
   const [name, setName] = useState("");
-  const [step, setStep] = useState<"code" | "name">(prefillCode ? "name" : "code");
+  const [step, setStep] = useState<"code" | "otp" | "name">(prefillCode ? "name" : "code");
   const [loading, setLoading] = useState(false);
   const [roomName, setRoomName] = useState("");
+  const [passwordProtected, setPasswordProtected] = useState(false);
 
   async function validateCode() {
     if (code.length < 6) return;
@@ -26,7 +28,8 @@ export function JoinRoomModal({ onClose, prefillCode = "" }: Props) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setRoomName(data.name);
-      setStep("name");
+      setPasswordProtected(data.passwordProtected ?? false);
+      setStep(data.passwordProtected ? "otp" : "name");
     } catch (err: any) {
       toast.error(err.message || "Room not found");
     } finally {
@@ -34,9 +37,30 @@ export function JoinRoomModal({ onClose, prefillCode = "" }: Props) {
     }
   }
 
+  async function verifyOtp() {
+    if (otp.length < 6) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/rooms/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: code.trim().toUpperCase(), password: otp.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setStep("name");
+    } catch (err: any) {
+      toast.error(err.message || "Invalid OTP");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   function handleJoin() {
     if (!name.trim()) return;
-    router.push(`/room/${code.trim().toUpperCase()}?name=${encodeURIComponent(name.trim())}`);
+    const params = new URLSearchParams({ name: name.trim() });
+    if (passwordProtected && otp) params.set("password", otp.trim());
+    router.push(`/room/${code.trim().toUpperCase()}?${params.toString()}`);
   }
 
   return (
@@ -52,12 +76,12 @@ export function JoinRoomModal({ onClose, prefillCode = "" }: Props) {
       >
         <h2 className="text-xl font-semibold text-white mb-1">Join a Room</h2>
         <p className="text-slate-400 text-sm mb-6">
-          {step === "code"
-            ? "Enter the 6-character room code"
-            : `Joining "${roomName}" — enter your name`}
+          {step === "code" && "Enter the 6-character room code"}
+          {step === "otp" && `"${roomName}" is password protected — enter the OTP`}
+          {step === "name" && `Joining "${roomName}" — enter your name`}
         </p>
 
-        {step === "code" ? (
+        {step === "code" && (
           <>
             <input
               autoFocus
@@ -91,7 +115,44 @@ export function JoinRoomModal({ onClose, prefillCode = "" }: Props) {
               </button>
             </div>
           </>
-        ) : (
+        )}
+
+        {step === "otp" && (
+          <>
+            <div className="flex items-center gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl mb-4">
+              <svg className="w-4 h-4 text-amber-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              <p className="text-amber-300 text-xs">Ask the room admin for the 6-digit OTP</p>
+            </div>
+            <input
+              autoFocus
+              value={otp}
+              onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))}
+              onKeyDown={(e) => e.key === "Enter" && verifyOtp()}
+              placeholder="000000"
+              maxLength={6}
+              className="w-full bg-slate-800 border border-slate-600 rounded-xl px-4 py-3 text-white text-center text-2xl tracking-[0.4em] placeholder-slate-600 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/50 transition mb-4"
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setStep("code"); setOtp(""); }}
+                className="flex-1 px-4 py-3 rounded-xl border border-slate-600 text-slate-300 hover:bg-slate-800 transition"
+              >
+                ← Back
+              </button>
+              <button
+                onClick={verifyOtp}
+                disabled={otp.length < 6 || loading}
+                className="flex-1 px-4 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-medium disabled:opacity-50 transition"
+              >
+                {loading ? "Verifying..." : "Verify OTP →"}
+              </button>
+            </div>
+          </>
+        )}
+
+        {step === "name" && (
           <>
             <input
               autoFocus
@@ -104,7 +165,7 @@ export function JoinRoomModal({ onClose, prefillCode = "" }: Props) {
             />
             <div className="flex gap-3">
               <button
-                onClick={() => setStep("code")}
+                onClick={() => setStep(passwordProtected ? "otp" : "code")}
                 className="flex-1 px-4 py-3 rounded-xl border border-slate-600 text-slate-300 hover:bg-slate-800 transition"
               >
                 ← Back

@@ -8,25 +8,32 @@ import { MessageDoc, Member, RoomDoc } from "@/types";
 interface UseRoomOptions {
   roomCode: string;
   userName: string;
+  password?: string;
 }
 
-export function useRoom({ roomCode, userName }: UseRoomOptions) {
+export function useRoom({ roomCode, userName, password }: UseRoomOptions) {
   const socket = useSocket();
   const [room, setRoom] = useState<RoomDoc | null>(null);
   const [messages, setMessages] = useState<MessageDoc[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const [connected, setConnected] = useState(false);
+  const [roomError, setRoomError] = useState<string | null>(null);
   const typingTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   useEffect(() => {
-    socket.emit(SOCKET_EVENTS.JOIN_ROOM, { roomCode, userName });
+    socket.emit(SOCKET_EVENTS.JOIN_ROOM, { roomCode, userName, password });
 
     const onRoomJoined = ({ messages: msgs, members: mems, room: r }: any) => {
       setMessages(msgs);
       setMembers(mems);
       setRoom(r);
       setConnected(true);
+      setRoomError(null);
+    };
+
+    const onRoomError = ({ message }: { message: string }) => {
+      setRoomError(message);
     };
 
     const onNewMessage = (msg: MessageDoc) => {
@@ -79,6 +86,7 @@ export function useRoom({ roomCode, userName }: UseRoomOptions) {
       );
     };
 
+    socket.on(SOCKET_EVENTS.ROOM_ERROR, onRoomError);
     socket.on(SOCKET_EVENTS.ROOM_JOINED, onRoomJoined);
     socket.on(SOCKET_EVENTS.NEW_MESSAGE, onNewMessage);
     socket.on(SOCKET_EVENTS.MEMBER_JOINED, onMemberJoined);
@@ -89,6 +97,7 @@ export function useRoom({ roomCode, userName }: UseRoomOptions) {
     socket.on(SOCKET_EVENTS.MESSAGE_SEEN, onMessageSeen);
 
     return () => {
+      socket.off(SOCKET_EVENTS.ROOM_ERROR, onRoomError);
       socket.off(SOCKET_EVENTS.ROOM_JOINED, onRoomJoined);
       socket.off(SOCKET_EVENTS.NEW_MESSAGE, onNewMessage);
       socket.off(SOCKET_EVENTS.MEMBER_JOINED, onMemberJoined);
@@ -99,7 +108,7 @@ export function useRoom({ roomCode, userName }: UseRoomOptions) {
       socket.off(SOCKET_EVENTS.MESSAGE_SEEN, onMessageSeen);
       socket.emit(SOCKET_EVENTS.LEAVE_ROOM, { roomCode, userName });
     };
-  }, [roomCode, userName]);
+  }, [roomCode, userName, password]);
 
   const sendMessage = useCallback(
     (payload: { type: string; content: string; fileName?: string; replyTo?: string }) => {
@@ -143,6 +152,7 @@ export function useRoom({ roomCode, userName }: UseRoomOptions) {
     members,
     typingUsers,
     connected,
+    roomError,
     sendMessage,
     sendTypingStart,
     sendTypingStop,
