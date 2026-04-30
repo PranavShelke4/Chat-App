@@ -23,6 +23,10 @@ app.prepare().then(async () => {
     require("ts-node").register({
       project: path.join(process.cwd(), "tsconfig.json"),
       transpileOnly: true,
+      compilerOptions: {
+        module: "commonjs",
+        moduleResolution: "node",
+      },
     });
     const { initSocketHandlers } = require("./lib/socket.ts");
     initSocketHandlers(io);
