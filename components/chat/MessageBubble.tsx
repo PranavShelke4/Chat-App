@@ -21,7 +21,7 @@ interface Props {
 export function MessageBubble({ message, isOwn, userName, onReply, onReact, onDelete }: Props) {
   const [showActions, setShowActions] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const hideTimer = useRef<NodeJS.Timeout>();
+  const hideTimer = useRef<NodeJS.Timeout | undefined>(undefined);
 
   if (message.type === "system") return <SystemMessage message={message} />;
 

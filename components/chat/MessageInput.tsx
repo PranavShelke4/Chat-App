@@ -32,7 +32,7 @@ export function MessageInput({
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<string>("");
   const fileRef = useRef<HTMLInputElement>(null);
-  const typingTimer = useRef<NodeJS.Timeout>();
+  const typingTimer = useRef<NodeJS.Timeout | undefined>(undefined);
   const isTyping = useRef(false);
 
   function handleTextChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
