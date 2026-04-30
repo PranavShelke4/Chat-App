@@ -28,3 +28,9 @@
     background: rgba(124, 58, 237, 0.7);
   }
 }
+
+/* Light mode overrides */
+html.light body {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
