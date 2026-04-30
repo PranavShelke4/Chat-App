@@ -23,16 +23,19 @@ app.prepare().then(async () => {
     require("ts-node").register({
       project: path.join(process.cwd(), "tsconfig.json"),
       transpileOnly: true,
-      compilerOptions: {
-        module: "commonjs",
-        moduleResolution: "node",
-      },
+      compilerOptions: { module: "commonjs", moduleResolution: "node" },
     });
     const { initSocketHandlers } = require("./lib/socket.ts");
     initSocketHandlers(io);
+    const { cleanupExpiredRooms } = require("./lib/cleanup.ts");
+    cleanupExpiredRooms().catch(console.error);
+    setInterval(() => cleanupExpiredRooms().catch(console.error), 24 * 60 * 60 * 1000);
   } else {
     const { initSocketHandlers } = require("./.next/server/lib/socket.js");
     initSocketHandlers(io);
+    const { cleanupExpiredRooms } = require("./.next/server/lib/cleanup.js");
+    cleanupExpiredRooms().catch(console.error);
+    setInterval(() => cleanupExpiredRooms().catch(console.error), 24 * 60 * 60 * 1000);
   }
 
   const PORT = process.env.PORT || 3000;
