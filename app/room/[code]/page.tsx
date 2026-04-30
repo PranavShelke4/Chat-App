@@ -27,7 +27,7 @@ export default function RoomPage({ params }: Props) {
     const stored = sessionStorage.getItem(`room_otp_${code}`);
     if (stored) setPassword(stored);
     setSessionChecked(true);
-  }, [code]);
+  }, [code, nameFromUrl]);
 
   useEffect(() => {
     async function verify() {
@@ -36,6 +36,7 @@ export default function RoomPage({ params }: Props) {
         setNotFound(true);
         return;
       }
+
       setVerified(true);
     }
     verify();
@@ -84,5 +85,11 @@ export default function RoomPage({ params }: Props) {
     );
   }
 
-  return <ChatRoom roomCode={code} userName={userName} password={password} />;
+  return (
+    <ChatRoom
+      roomCode={code}
+      userName={userName}
+      password={password}
+    />
+  );
 }

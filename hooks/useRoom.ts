@@ -23,8 +23,6 @@ export function useRoom({ roomCode, userName, password }: UseRoomOptions) {
   const typingTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   useEffect(() => {
-    socket.emit(SOCKET_EVENTS.JOIN_ROOM, { roomCode, userName, password });
-
     const onRoomJoined = ({ messages: msgs, members: mems, room: r }: any) => {
       setMessages(msgs);
       setMembers(mems);
@@ -102,6 +100,8 @@ export function useRoom({ roomCode, userName, password }: UseRoomOptions) {
     socket.on(SOCKET_EVENTS.REACTION_UPDATED, onReactionUpdated);
     socket.on(SOCKET_EVENTS.MESSAGE_DELETED, onMessageDeleted);
     socket.on(SOCKET_EVENTS.MESSAGE_SEEN, onMessageSeen);
+
+    socket.emit(SOCKET_EVENTS.JOIN_ROOM, { roomCode, userName, password });
 
     return () => {
       socket.off(SOCKET_EVENTS.ROOM_ERROR, onRoomError);

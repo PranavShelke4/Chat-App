@@ -9,6 +9,17 @@ export interface RoomDoc {
   lastActivity: string;
 }
 
+export type RoomRole = "admin" | "member";
+
+export interface RecentRoom {
+  code: string;
+  name: string;
+  userName: string;
+  role: RoomRole;
+  passwordProtected: boolean;
+  lastOpened: string;
+}
+
 export interface Reaction {
   emoji: string;
   names: string[];

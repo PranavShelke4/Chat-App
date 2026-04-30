@@ -4,12 +4,14 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import { RecentRoom, upsertRecentRoom } from "@/lib/localRooms";
 
 interface Props {
   onClose: () => void;
+  onRecentRoomSaved?: (room: RecentRoom) => void;
 }
 
-export function CreateRoomModal({ onClose }: Props) {
+export function CreateRoomModal({ onClose, onRecentRoomSaved }: Props) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [roomName, setRoomName] = useState("");
@@ -31,9 +33,15 @@ export function CreateRoomModal({ onClose }: Props) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setCreated({ code: data.code, roomName: data.name, password: data.password ?? null });
-      if (data.password) {
-        sessionStorage.setItem(`room_otp_${data.code}`, data.password);
-      }
+
+      const recentRoom = upsertRecentRoom({
+        code: data.code,
+        name: data.name,
+        userName: name.trim(),
+        role: "admin",
+        passwordProtected: !!data.password,
+      });
+      if (recentRoom) onRecentRoomSaved?.(recentRoom);
     } catch (err: any) {
       toast.error(err.message || "Failed to create room");
     } finally {

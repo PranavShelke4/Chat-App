@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import { RoomDoc } from "@/types";
+import { removeRecentRoom } from "@/lib/localRooms";
 
 interface Props {
   room: RoomDoc;
@@ -11,10 +13,12 @@ interface Props {
 }
 
 export function OtpSecurityModal({ room, onClose }: Props) {
+  const router = useRouter();
   const [data, setData] = useState<{ password: string | null; locked: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
   const [rotating, setRotating] = useState(false);
   const [toggling, setToggling] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [copiedOtp, setCopiedOtp] = useState(false);
 
   useEffect(() => {
@@ -61,6 +65,30 @@ export function OtpSecurityModal({ room, onClose }: Props) {
       toast.error(err.message || "Failed to update room");
     } finally {
       setToggling(false);
+    }
+  }
+
+  async function deleteRoom() {
+    if (!window.confirm(`Delete ${room.name}? This removes all messages and closes the room.`)) return;
+
+    setDeleting(true);
+    try {
+      const res = await fetch("/api/rooms/admin", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: room.code, adminName: room.adminName }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error);
+
+      removeRecentRoom(room.code);
+      toast.success("Room deleted");
+      onClose();
+      router.push("/");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete room");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -191,6 +219,26 @@ export function OtpSecurityModal({ room, onClose }: Props) {
                   </>
                 )}
               </button>
+            </div>
+
+            <div className="border-t border-slate-800/60 pt-4">
+              <button
+                onClick={deleteRoom}
+                disabled={deleting}
+                className="w-full py-2.5 rounded-xl border border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20 disabled:opacity-50 transition text-sm flex items-center justify-center gap-2"
+              >
+                {deleting ? (
+                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                )}
+                Delete Room
+              </button>
+              <p className="text-xs text-slate-600 mt-1.5 text-center">
+                This cannot be undone.
+              </p>
             </div>
           </div>
         )}

@@ -4,18 +4,21 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import { RecentRoom, upsertRecentRoom } from "@/lib/localRooms";
 
 interface Props {
   onClose: () => void;
   prefillCode?: string;
+  prefillName?: string;
+  onRecentRoomSaved?: (room: RecentRoom) => void;
 }
 
-export function JoinRoomModal({ onClose, prefillCode = "" }: Props) {
+export function JoinRoomModal({ onClose, prefillCode = "", prefillName = "", onRecentRoomSaved }: Props) {
   const router = useRouter();
   const [code, setCode] = useState(prefillCode.toUpperCase());
   const [otp, setOtp] = useState("");
-  const [name, setName] = useState("");
-  const [step, setStep] = useState<"code" | "otp" | "name">(prefillCode ? "name" : "code");
+  const [name, setName] = useState(prefillName);
+  const [step, setStep] = useState<"code" | "otp" | "name">(prefillCode ? (prefillName ? "name" : "code") : "code");
   const [loading, setLoading] = useState(false);
   const [roomName, setRoomName] = useState("");
   const [passwordProtected, setPasswordProtected] = useState(false);
@@ -59,6 +62,14 @@ export function JoinRoomModal({ onClose, prefillCode = "" }: Props) {
 
   function handleJoin() {
     if (!name.trim()) return;
+    const recentRoom = upsertRecentRoom({
+      code: code.trim().toUpperCase(),
+      name: roomName,
+      userName: name.trim(),
+      role: "member",
+      passwordProtected,
+    });
+    if (recentRoom) onRecentRoomSaved?.(recentRoom);
     router.push(`/room/${code.trim().toUpperCase()}?name=${encodeURIComponent(name.trim())}`);
   }
 

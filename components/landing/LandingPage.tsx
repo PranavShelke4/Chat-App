@@ -1,12 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { CreateRoomModal } from "./CreateRoomModal";
 import { JoinRoomModal } from "./JoinRoomModal";
+import { RecentRoom, getRecentRooms } from "@/lib/localRooms";
 
 export function LandingPage() {
+  const router = useRouter();
   const [modal, setModal] = useState<"create" | "join" | null>(null);
+  const [recentRooms, setRecentRooms] = useState<RecentRoom[]>([]);
+
+  useEffect(() => {
+    setRecentRooms(getRecentRooms());
+  }, []);
+
+  function handleRecentRoomSaved(room: RecentRoom) {
+    setRecentRooms((prev) => [room, ...prev.filter((item) => item.code !== room.code)]);
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-6 relative overflow-hidden">
@@ -86,9 +98,61 @@ export function LandingPage() {
         Rooms expire after 7 days of inactivity
       </motion.p>
 
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.25 }}
+        className="w-full max-w-lg mt-8 relative z-10"
+      >
+        <div className="flex items-center justify-between mb-3 px-1">
+          <h2 className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">Recent Rooms</h2>
+          <span className="text-xs text-slate-600">{recentRooms.length} saved</span>
+        </div>
+
+        <div className="space-y-3">
+          {recentRooms.length === 0 ? (
+            <div className="rounded-2xl border border-slate-800/70 bg-slate-900/50 backdrop-blur px-4 py-5 text-sm text-slate-500 text-center">
+              Your created and joined rooms will appear here.
+            </div>
+          ) : (
+            recentRooms.map((room) => (
+              <button
+                key={room.code}
+                onClick={() => router.push(`/room/${room.code}?name=${encodeURIComponent(room.userName)}`)}
+                className="w-full rounded-2xl border border-slate-800/70 bg-slate-900/70 backdrop-blur px-4 py-4 text-left hover:border-violet-500/40 hover:bg-slate-900 transition shadow-lg shadow-black/10"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="text-white font-medium">{room.name}</p>
+                      <span className="text-[11px] px-2 py-0.5 rounded-full border border-slate-700 text-slate-400 uppercase tracking-wider">
+                        {room.role}
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-500">Code {room.code} · Open as {room.userName}</p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 text-xs text-slate-500">
+                    {room.passwordProtected && (
+                      <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                        OTP
+                      </span>
+                    )}
+                    <span>Tap to open</span>
+                  </div>
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      </motion.div>
+
       <AnimatePresence>
-        {modal === "create" && <CreateRoomModal onClose={() => setModal(null)} />}
-        {modal === "join" && <JoinRoomModal onClose={() => setModal(null)} />}
+        {modal === "create" && (
+          <CreateRoomModal onClose={() => setModal(null)} onRecentRoomSaved={handleRecentRoomSaved} />
+        )}
+        {modal === "join" && (
+          <JoinRoomModal onClose={() => setModal(null)} onRecentRoomSaved={handleRecentRoomSaved} />
+        )}
       </AnimatePresence>
     </div>
   );

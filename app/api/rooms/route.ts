@@ -55,6 +55,7 @@ export async function GET(req: NextRequest) {
       name: room.name,
       adminName: room.adminName,
       passwordProtected: !!room.password,
+      locked: room.locked,
       createdAt: room.createdAt,
     });
   } catch (err) {

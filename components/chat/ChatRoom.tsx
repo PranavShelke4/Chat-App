@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { useRoom } from "@/hooks/useRoom";
@@ -8,15 +8,17 @@ import { RoomHeader } from "./RoomHeader";
 import { MembersSidebar } from "./MembersSidebar";
 import { MessageList } from "./MessageList";
 import { MessageInput } from "./MessageInput";
-import { MessageDoc } from "@/types";
+import { MessageDoc, RoomDoc } from "@/types";
+import { RoomRole, upsertRecentRoom } from "@/lib/localRooms";
 
 interface Props {
   roomCode: string;
   userName: string;
   password?: string;
+  onJoined?: (room: RoomDoc) => void;
 }
 
-export function ChatRoom({ roomCode, userName, password }: Props) {
+export function ChatRoom({ roomCode, userName, password, onJoined }: Props) {
   const router = useRouter();
   const {
     room,
@@ -39,6 +41,21 @@ export function ChatRoom({ roomCode, userName, password }: Props) {
   const [replyTo, setReplyTo] = useState<MessageDoc | null>(null);
   const [otpInput, setOtpInput] = useState("");
   const [otpLoading, setOtpLoading] = useState(false);
+
+  useEffect(() => {
+    if (!connected || !room) return;
+
+    const role: RoomRole = room.adminName === userName ? "admin" : "member";
+    upsertRecentRoom({
+      code: room.code,
+      name: room.name,
+      userName,
+      role,
+      passwordProtected: room.passwordProtected,
+    });
+    sessionStorage.removeItem(`room_otp_${roomCode}`);
+    onJoined?.(room);
+  }, [connected, room, roomCode, userName, onJoined]);
 
   async function handleOtpReentry() {
     if (otpInput.length < 6) return;

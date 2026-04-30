@@ -42,7 +42,7 @@ export function initSocketHandlers(io: SocketServer) {
         return;
       }
 
-      if (room.password && room.password !== password) {
+      if (room.password && room.password !== password && userName !== room.adminName) {
         socket.emit(SOCKET_EVENTS.ROOM_ERROR, { message: "Invalid OTP" });
         return;
       }

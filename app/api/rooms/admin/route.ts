@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
+import { Message } from "@/models/Message";
 import { Room } from "@/models/Room";
 
 function generateOTP(): string {
@@ -47,6 +48,23 @@ export async function PATCH(req: NextRequest) {
     });
   } catch (err) {
     console.error("[PATCH /api/rooms/admin]", err);
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const { code, adminName } = await req.json();
+    const room = await verifyAdmin(code, adminName);
+    if (!room) return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+
+    await connectDB();
+    await Message.deleteMany({ roomCode: room.code });
+    await Room.deleteOne({ code: room.code });
+
+    return NextResponse.json({ deleted: true });
+  } catch (err) {
+    console.error("[DELETE /api/rooms/admin]", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }
