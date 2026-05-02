@@ -19,6 +19,7 @@ export const SOCKET_EVENTS = {
   NEW_MESSAGE: "new-message",
   MEMBER_JOINED: "member-joined",
   MEMBER_LEFT: "member-left",
+  MEMBER_RENAMED: "member-renamed",
   TYPING_UPDATE: "typing-update",
   REACTION_UPDATED: "reaction-updated",
   MESSAGE_DELETED: "message-deleted",
