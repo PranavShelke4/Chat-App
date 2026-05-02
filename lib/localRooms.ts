@@ -68,3 +68,12 @@ export function removeRecentRoom(code: string) {
   const rooms = readRooms().filter((room) => room.code !== code.toUpperCase());
   writeRooms(rooms);
 }
+
+export function updateRoomUserName(code: string, newName: string) {
+  if (!canUseStorage()) return;
+
+  const rooms = readRooms().map((room) =>
+    room.code === code.toUpperCase() ? { ...room, userName: newName } : room
+  );
+  writeRooms(rooms);
+}
