@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/mongodb";
 import { Room } from "@/models/Room";
 import { Message } from "@/models/Message";
 import { pusher, CHANNEL } from "@/lib/pusher";
+import { SOCKET_EVENTS } from "@/lib/socketEvents";
 
 export async function PATCH(req: NextRequest) {
   try {
@@ -56,7 +57,7 @@ export async function PATCH(req: NextRequest) {
       await room.save();
     }
 
-    await pusher.trigger(CHANNEL(code), "member-renamed", { oldName, newName: trimmedNew });
+    await pusher.trigger(CHANNEL(code), SOCKET_EVENTS.MEMBER_RENAMED, { oldName, newName: trimmedNew });
 
     return NextResponse.json({ ok: true });
   } catch (err) {

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import PusherClient from "pusher-js";
 import { MessageDoc, Member, RoomDoc } from "@/types";
+import { SOCKET_EVENTS } from "@/lib/socketEvents";
 
 function makeSystemMsg(roomCode: string, content: string): MessageDoc {
   return {
@@ -142,7 +143,7 @@ export function useRoom({ roomCode, userName: initialUserName, password }: UseRo
         }
       });
 
-      channel.bind("member-renamed", ({ oldName, newName }: { oldName: string; newName: string }) => {
+      channel.bind(SOCKET_EVENTS.MEMBER_RENAMED, ({ oldName, newName }: { oldName: string; newName: string }) => {
         if (cancelled) return;
 
         setMembers((prev) =>
@@ -153,6 +154,9 @@ export function useRoom({ roomCode, userName: initialUserName, password }: UseRo
           prev.map((m) => ({
             ...m,
             senderName: m.senderName === oldName ? newName : m.senderName,
+            replyTo: m.replyTo
+              ? { ...m.replyTo, senderName: m.replyTo.senderName === oldName ? newName : m.replyTo.senderName }
+              : m.replyTo,
             reactions: m.reactions.map((r) => ({
               ...r,
               names: r.names.map((n) => (n === oldName ? newName : n)),
