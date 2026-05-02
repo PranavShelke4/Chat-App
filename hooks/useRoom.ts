@@ -23,7 +23,7 @@ interface UseRoomOptions {
   password?: string;
 }
 
-export function useRoom({ roomCode, userName, password }: UseRoomOptions) {
+export function useRoom({ roomCode, userName: initialUserName, password }: UseRoomOptions) {
   const [room, setRoom] = useState<RoomDoc | null>(null);
   const [messages, setMessages] = useState<MessageDoc[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
@@ -31,12 +31,15 @@ export function useRoom({ roomCode, userName, password }: UseRoomOptions) {
   const [connected, setConnected] = useState(false);
   const [roomError, setRoomError] = useState<string | null>(null);
   const [kicked, setKicked] = useState(false);
+  const [currentUserName, setCurrentUserName] = useState(initialUserName);
 
+  const userNameRef = useRef(initialUserName);
   const pusherRef = useRef<PusherClient | null>(null);
   const channelRef = useRef<any>(null);
   const typingTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const kickedNames = useRef<Set<string>>(new Set());
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     let cancelled = false;
 
@@ -44,7 +47,7 @@ export function useRoom({ roomCode, userName, password }: UseRoomOptions) {
       const res = await fetch("/api/rooms/join", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ roomCode, userName, password }),
+        body: JSON.stringify({ roomCode, userName: initialUserName, password }),
       });
       const data = await res.json();
       if (cancelled) return;
@@ -62,7 +65,7 @@ export function useRoom({ roomCode, userName, password }: UseRoomOptions) {
         channelAuthorization: {
           endpoint: "/api/pusher/auth",
           transport: "ajax",
-          params: { userName },
+          params: { userName: initialUserName },
         },
       });
       pusherRef.current = pusher;
@@ -127,7 +130,7 @@ export function useRoom({ roomCode, userName, password }: UseRoomOptions) {
 
       channel.bind("member-kicked", ({ targetName }: { targetName: string }) => {
         if (cancelled) return;
-        if (targetName === userName) {
+        if (targetName === userNameRef.current) {
           setKicked(true);
         } else {
           kickedNames.current.add(targetName);
@@ -139,8 +142,37 @@ export function useRoom({ roomCode, userName, password }: UseRoomOptions) {
         }
       });
 
+      channel.bind("member-renamed", ({ oldName, newName }: { oldName: string; newName: string }) => {
+        if (cancelled) return;
+
+        setMembers((prev) =>
+          prev.map((m) => (m.name === oldName ? { ...m, name: newName } : m))
+        );
+
+        setMessages((prev) =>
+          prev.map((m) => ({
+            ...m,
+            senderName: m.senderName === oldName ? newName : m.senderName,
+            reactions: m.reactions.map((r) => ({
+              ...r,
+              names: r.names.map((n) => (n === oldName ? newName : n)),
+            })),
+            seenBy: m.seenBy.map((n) => (n === oldName ? newName : n)),
+          }))
+        );
+
+        setRoom((prev) =>
+          prev && prev.adminName === oldName ? { ...prev, adminName: newName } : prev
+        );
+
+        if (oldName === userNameRef.current) {
+          userNameRef.current = newName;
+          setCurrentUserName(newName);
+        }
+      });
+
       channel.bind("client-typing-start", ({ userName: u }: { userName: string }) => {
-        if (cancelled || u === userName) return;
+        if (cancelled || u === userNameRef.current) return;
         const timer = typingTimers.current.get(u);
         if (timer) clearTimeout(timer);
         setTypingUsers((prev) => (prev.includes(u) ? prev : [...prev, u]));
@@ -172,36 +204,36 @@ export function useRoom({ roomCode, userName, password }: UseRoomOptions) {
         pusherRef.current.disconnect();
       }
     };
-  }, [roomCode, userName, password]);
+  }, [roomCode, password]); // intentionally omit initialUserName — connection established once
 
   const sendMessage = useCallback(
     async (payload: { type: string; content: string; fileName?: string; replyTo?: string }) => {
       await fetch("/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ roomCode, senderName: userName, ...payload }),
+        body: JSON.stringify({ roomCode, senderName: userNameRef.current, ...payload }),
       });
     },
-    [roomCode, userName]
+    [roomCode]
   );
 
   const sendTypingStart = useCallback(() => {
-    channelRef.current?.trigger("client-typing-start", { userName });
-  }, [userName]);
+    channelRef.current?.trigger("client-typing-start", { userName: userNameRef.current });
+  }, []);
 
   const sendTypingStop = useCallback(() => {
-    channelRef.current?.trigger("client-typing-stop", { userName });
-  }, [userName]);
+    channelRef.current?.trigger("client-typing-stop", { userName: userNameRef.current });
+  }, []);
 
   const addReaction = useCallback(
     async (messageId: string, emoji: string) => {
       await fetch(`/api/messages/${messageId}/react`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ emoji, userName }),
+        body: JSON.stringify({ emoji, userName: userNameRef.current }),
       });
     },
-    [userName]
+    []
   );
 
   const deleteMessage = useCallback(
@@ -209,10 +241,10 @@ export function useRoom({ roomCode, userName, password }: UseRoomOptions) {
       await fetch(`/api/messages/${messageId}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userName }),
+        body: JSON.stringify({ userName: userNameRef.current }),
       });
     },
-    [userName]
+    []
   );
 
   const markSeen = useCallback(
@@ -220,10 +252,10 @@ export function useRoom({ roomCode, userName, password }: UseRoomOptions) {
       await fetch(`/api/messages/${messageId}/seen`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userName }),
+        body: JSON.stringify({ userName: userNameRef.current }),
       });
     },
-    [userName]
+    []
   );
 
   const kickMember = useCallback(
@@ -231,10 +263,22 @@ export function useRoom({ roomCode, userName, password }: UseRoomOptions) {
       await fetch("/api/rooms/kick", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ roomCode, targetName, adminName: userName }),
+        body: JSON.stringify({ roomCode, targetName, adminName: userNameRef.current }),
       });
     },
-    [roomCode, userName]
+    [roomCode]
+  );
+
+  const renameMember = useCallback(
+    async (newName: string) => {
+      const res = await fetch("/api/rooms/rename", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomCode, oldName: userNameRef.current, newName }),
+      });
+      return res;
+    },
+    [roomCode]
   );
 
   return {
@@ -245,6 +289,7 @@ export function useRoom({ roomCode, userName, password }: UseRoomOptions) {
     connected,
     roomError,
     kicked,
+    currentUserName,
     sendMessage,
     sendTypingStart,
     sendTypingStop,
@@ -252,5 +297,6 @@ export function useRoom({ roomCode, userName, password }: UseRoomOptions) {
     deleteMessage,
     markSeen,
     kickMember,
+    renameMember,
   };
 }
