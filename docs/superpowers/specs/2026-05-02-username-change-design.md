@@ -30,7 +30,10 @@ The feature is built on the existing name-based identity model — no session to
 
 **Server logic (in order):**
 1. Find room by `roomCode`
-2. Bulk-update all messages in that room: `senderName: oldName → newName`
+2. Bulk-update all messages in that room:
+   - `senderName: oldName → newName`
+   - Replace `oldName` with `newName` in every `reactions[].names` array
+   - Replace `oldName` with `newName` in every `seenBy` array
 3. If `room.adminName === oldName`, set `room.adminName = newName`
 4. Fire Pusher event `member-renamed` with `{ oldName, newName }` on `presence-room-${roomCode}`
 5. Return `{ success: true }`
