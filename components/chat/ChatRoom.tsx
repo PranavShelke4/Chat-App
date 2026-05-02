@@ -9,8 +9,10 @@ import { MembersSidebar } from "./MembersSidebar";
 import { MessageList } from "./MessageList";
 import { MessageInput } from "./MessageInput";
 import { MessageDoc, RoomDoc } from "@/types";
-import { RoomRole, upsertRecentRoom } from "@/lib/localRooms";
+import { RoomRole, upsertRecentRoom, updateRoomUserName } from "@/lib/localRooms";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { EditNameModal } from "./EditNameModal";
+import { AnimatePresence } from "framer-motion";
 
 interface Props {
   roomCode: string;
@@ -29,6 +31,7 @@ export function ChatRoom({ roomCode, userName, password, onJoined }: Props) {
     connected,
     roomError,
     kicked,
+    currentUserName,
     sendMessage,
     sendTypingStart,
     sendTypingStop,
@@ -36,6 +39,7 @@ export function ChatRoom({ roomCode, userName, password, onJoined }: Props) {
     deleteMessage,
     markSeen,
     kickMember,
+    renameMember,
   } = useRoom({ roomCode, userName, password });
 
   const { permission: notifPermission, requestPermission } = usePushNotifications(userName, roomCode);
@@ -44,21 +48,22 @@ export function ChatRoom({ roomCode, userName, password, onJoined }: Props) {
   const [replyTo, setReplyTo] = useState<MessageDoc | null>(null);
   const [otpInput, setOtpInput] = useState("");
   const [otpLoading, setOtpLoading] = useState(false);
+  const [showEditName, setShowEditName] = useState(false);
 
   useEffect(() => {
     if (!connected || !room) return;
 
-    const role: RoomRole = room.adminName === userName ? "admin" : "member";
+    const role: RoomRole = room.adminName === currentUserName ? "admin" : "member";
     upsertRecentRoom({
       code: room.code,
       name: room.name,
-      userName,
+      userName: currentUserName,
       role,
       passwordProtected: room.passwordProtected,
     });
     sessionStorage.removeItem(`room_otp_${roomCode}`);
     onJoined?.(room);
-  }, [connected, room, roomCode, userName, onJoined]);
+  }, [connected, room, roomCode, currentUserName, onJoined]);
 
   async function handleOtpReentry() {
     if (otpInput.length < 6) return;
@@ -81,6 +86,17 @@ export function ChatRoom({ roomCode, userName, password, onJoined }: Props) {
     } finally {
       setOtpLoading(false);
     }
+  }
+
+  async function handleRename(newName: string) {
+    const res = await renameMember(newName);
+    if (!res.ok) {
+      const d = await res.json();
+      toast.error(d.error || "Failed to rename");
+      throw new Error(d.error);
+    }
+    router.replace(`/room/${roomCode}?name=${encodeURIComponent(newName)}`);
+    updateRoomUserName(roomCode, newName);
   }
 
   if (kicked) {
@@ -176,9 +192,10 @@ export function ChatRoom({ roomCode, userName, password, onJoined }: Props) {
     <div className="h-dvh bg-slate-950 flex flex-col overflow-hidden">
       <RoomHeader
         room={room}
-        userName={userName}
+        userName={currentUserName}
         members={members}
         onToggleSidebar={() => setSidebarOpen((o) => !o)}
+        onEditName={() => setShowEditName(true)}
       />
 
       {notifPermission !== null && notifPermission !== "granted" && (
@@ -210,7 +227,7 @@ export function ChatRoom({ roomCode, userName, password, onJoined }: Props) {
           <MessageList
             messages={messages}
             typingUsers={typingUsers}
-            userName={userName}
+            userName={currentUserName}
             onReply={setReplyTo}
             onReact={addReaction}
             onDelete={deleteMessage}
@@ -228,12 +245,22 @@ export function ChatRoom({ roomCode, userName, password, onJoined }: Props) {
         <MembersSidebar
           members={members}
           room={room}
-          userName={userName}
+          userName={currentUserName}
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
           onKick={kickMember}
         />
       </div>
+
+      <AnimatePresence>
+        {showEditName && (
+          <EditNameModal
+            currentName={currentUserName}
+            onSave={handleRename}
+            onClose={() => setShowEditName(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
