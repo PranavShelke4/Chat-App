@@ -5,7 +5,12 @@
       "Bash(npm install *)",
       "Bash(node -e \"const wp = require\\('web-push'\\); console.log\\(JSON.stringify\\(wp.generateVAPIDKeys\\(\\)\\)\\)\")",
       "Bash(npx tsc *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(Get-ChildItem -Path \"D:\\\\Personal Project\\\\nextjs-chat\" -Recurse -Directory)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(Select-String -Pattern \"jest|vitest|testing\" -SimpleMatch)"
     ]
   }
 }
