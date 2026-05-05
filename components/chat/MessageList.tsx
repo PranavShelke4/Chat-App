@@ -14,6 +14,9 @@ interface Props {
   onDelete: (messageId: string) => void;
   onSeen: (messageId: string) => void;
   onScrollToMessage?: (id: string) => void;
+  hasMore: boolean;
+  loadingMore: boolean;
+  onLoadMore: (oldestMessageId: string) => void;
 }
 
 export function MessageList({
@@ -25,8 +28,13 @@ export function MessageList({
   onDelete,
   onSeen,
   onScrollToMessage,
+  hasMore,
+  loadingMore,
+  onLoadMore,
 }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const prevScrollHeightRef = useRef<number>(0);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -45,6 +53,14 @@ export function MessageList({
     }
   }, [messages]);
 
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || prevScrollHeightRef.current === 0) return;
+    const diff = container.scrollHeight - prevScrollHeightRef.current;
+    if (diff > 0) container.scrollTop += diff;
+    prevScrollHeightRef.current = 0;
+  }, [messages.length]);
+
   function handleScrollToMessage(id: string) {
     const el = document.querySelector(`[data-message-id="${id}"]`);
     if (!el) return;
@@ -53,8 +69,35 @@ export function MessageList({
     setTimeout(() => setHighlightedId(null), 1200);
   }
 
+  function handleScroll() {
+    const container = containerRef.current;
+    if (!container) return;
+    if (container.scrollTop < 100 && hasMore && !loadingMore && messages.length > 0) {
+      prevScrollHeightRef.current = container.scrollHeight;
+      onLoadMore(messages[0]._id);
+    }
+  }
+
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto py-3 sm:py-4 px-2 sm:px-4 space-y-0.5">
+    <div
+      ref={containerRef}
+      onScroll={handleScroll}
+      className="flex-1 min-h-0 overflow-y-auto py-3 sm:py-4 px-2 sm:px-4 space-y-0.5"
+    >
+      {loadingMore && (
+        <div className="flex justify-center py-3">
+          <div className="w-5 h-5 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      )}
+
+      {!hasMore && messages.length > 0 && (
+        <div className="flex items-center gap-3 py-3 px-2">
+          <div className="flex-1 h-px bg-slate-800" />
+          <span className="text-xs text-slate-600 flex-shrink-0">Beginning of conversation</span>
+          <div className="flex-1 h-px bg-slate-800" />
+        </div>
+      )}
+
       {messages.length === 0 && (
         <div className="flex flex-col items-center justify-center min-h-[50vh] text-center p-6 sm:p-8">
           <div className="w-16 h-16 rounded-3xl bg-slate-800/60 flex items-center justify-center mb-4">
