@@ -1,11 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import dynamic from "next/dynamic";
 import toast from "react-hot-toast";
 import { MessageDoc, UploadResult } from "@/types";
-
-const EmojiPicker = dynamic(() => import("emoji-picker-react"), { ssr: false });
 
 interface Props {
   onSend: (payload: {
@@ -28,7 +25,6 @@ export function MessageInput({
   onCancelReply,
 }: Props) {
   const [text, setText] = useState("");
-  const [showEmoji, setShowEmoji] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<string>("");
   const fileRef = useRef<HTMLInputElement>(null);
@@ -160,19 +156,13 @@ export function MessageInput({
             onKeyDown={handleKeyDown}
             placeholder="Type a message..."
             rows={1}
-            className="w-full resize-none bg-slate-800 border border-slate-700/50 rounded-2xl px-4 py-3 pr-11 text-white placeholder-slate-500 text-sm leading-5 focus:outline-none focus:border-violet-500/60 focus:ring-1 focus:ring-violet-500/30 transition max-h-32 overflow-y-auto"
+            className="w-full resize-none bg-slate-800 border border-slate-700/50 rounded-2xl px-4 py-3 pr-4 text-white placeholder-slate-500 text-sm leading-5 focus:outline-none focus:border-violet-500/60 focus:ring-1 focus:ring-violet-500/30 transition max-h-32 overflow-y-auto"
             onInput={(e) => {
               const t = e.target as HTMLTextAreaElement;
               t.style.height = "auto";
               t.style.height = Math.min(t.scrollHeight, 128) + "px";
             }}
           />
-          <button
-            onClick={() => setShowEmoji(!showEmoji)}
-            className="absolute right-2.5 bottom-2.5 w-7 h-7 flex items-center justify-center text-slate-500 hover:text-violet-400 transition text-base"
-          >
-            😊
-          </button>
         </div>
 
         <button
@@ -185,20 +175,6 @@ export function MessageInput({
           </svg>
         </button>
       </div>
-
-      {showEmoji && (
-        <div className="absolute bottom-24 right-3 sm:right-4 z-30">
-          <EmojiPicker
-            onEmojiClick={(e) => {
-              setText((p) => p + e.emoji);
-              setShowEmoji(false);
-            }}
-            theme={"dark" as any}
-            height={350}
-            width={300}
-          />
-        </div>
-      )}
     </div>
   );
 }
