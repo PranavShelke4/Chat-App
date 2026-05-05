@@ -10,7 +10,11 @@
       "Bash(Select-Object -ExpandProperty FullName)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(Select-String -Pattern \"jest|vitest|testing\" -SimpleMatch)"
+      "Bash(Select-String -Pattern \"jest|vitest|testing\" -SimpleMatch)",
+      "Bash(npm uninstall *)",
+      "Bash(node *)",
+      "Bash(git show *)",
+      "Bash(xargs -I{} git show {}:.env.local)"
     ]
   }
 }
