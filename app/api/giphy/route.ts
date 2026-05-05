@@ -6,7 +6,7 @@ export async function GET(req: NextRequest) {
   const API_KEY = process.env.GIPHY_API_KEY;
   if (!API_KEY) return NextResponse.json({ data: [] }, { status: 500 });
 
-  const q = req.nextUrl.searchParams.get("q");
+  const q = req.nextUrl.searchParams.get("q")?.slice(0, 100) ?? null;
   const limit = "20";
 
   const endpoint = q

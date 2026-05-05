@@ -42,8 +42,12 @@ export async function POST(req: NextRequest) {
     ]);
 
     const roomName = (room as any)?.name ?? roomCode;
-    const preview =
-      type === "text" ? content.slice(0, 100) : "📎 Sent a file";
+    const isGif = type === "text" && /^https?:\/\/(media\d*|i)\.giphy\.com\//i.test(content);
+    const preview = isGif
+      ? "🎬 Sent a GIF"
+      : type === "text"
+      ? content.slice(0, 100)
+      : "📎 Sent a file";
 
     const subs = await PushSubscription.find({
       roomCode,
