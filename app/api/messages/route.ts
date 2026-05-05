@@ -88,8 +88,9 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
-    const roomCode = req.nextUrl.searchParams.get("roomCode");
+    const roomCode = req.nextUrl.searchParams.get("roomCode")?.toUpperCase();
     const before = req.nextUrl.searchParams.get("before");
+    const password = req.nextUrl.searchParams.get("password") ?? undefined;
     const limit = 50;
 
     if (!roomCode || !before) {
@@ -101,6 +102,12 @@ export async function GET(req: NextRequest) {
     }
 
     await connectDB();
+
+    const room = await Room.findOne({ code: roomCode }).lean();
+    if (!room) return NextResponse.json({ error: "Room not found" }, { status: 404 });
+    if ((room as any).password && (room as any).password !== password) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     const messages = await Message.find({
       roomCode,
