@@ -32,6 +32,9 @@ export function ChatRoom({ roomCode, userName, password, onJoined }: Props) {
     roomError,
     kicked,
     currentUserName,
+    hasMore,
+    loadingMore,
+    loadMoreMessages,
     sendMessage,
     sendTypingStart,
     sendTypingStop,
@@ -232,6 +235,9 @@ export function ChatRoom({ roomCode, userName, password, onJoined }: Props) {
             onReact={addReaction}
             onDelete={deleteMessage}
             onSeen={markSeen}
+            hasMore={hasMore}
+            loadingMore={loadingMore}
+            onLoadMore={loadMoreMessages}
           />
           <MessageInput
             onSend={sendMessage}
