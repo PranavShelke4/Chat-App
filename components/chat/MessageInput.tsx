@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import toast from "react-hot-toast";
 import { MessageDoc, UploadResult } from "@/types";
+import { GifPicker } from "./GifPicker";
 
 interface Props {
   onSend: (payload: {
@@ -27,6 +28,7 @@ export function MessageInput({
   const [text, setText] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<string>("");
+  const [showGifPicker, setShowGifPicker] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const typingTimer = useRef<NodeJS.Timeout | undefined>(undefined);
   const isTyping = useRef(false);
@@ -149,6 +151,14 @@ export function MessageInput({
           onChange={handleFileChange}
         />
 
+        <button
+          onClick={() => setShowGifPicker((p) => !p)}
+          disabled={uploading}
+          className="w-10 h-10 sm:w-9 sm:h-9 flex-shrink-0 self-end sm:self-auto flex items-center justify-center rounded-2xl sm:rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700/50 text-slate-400 hover:text-violet-400 transition disabled:opacity-50 text-xs font-bold tracking-tight"
+        >
+          GIF
+        </button>
+
         <div className="flex-1 relative min-w-0">
           <textarea
             value={text}
@@ -175,6 +185,18 @@ export function MessageInput({
           </svg>
         </button>
       </div>
+
+      {showGifPicker && (
+        <div className="absolute bottom-full right-0 left-0 flex justify-end px-2.5 sm:px-3">
+          <GifPicker
+            onSelect={(url) => {
+              onSend({ type: "text", content: url, replyTo: replyTo?._id });
+              onCancelReply();
+            }}
+            onClose={() => setShowGifPicker(false)}
+          />
+        </div>
+      )}
     </div>
   );
 }
