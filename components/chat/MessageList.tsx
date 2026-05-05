@@ -13,6 +13,7 @@ interface Props {
   onReact: (messageId: string, emoji: string) => void;
   onDelete: (messageId: string) => void;
   onSeen: (messageId: string) => void;
+  onScrollToMessage?: (id: string) => void;
 }
 
 export function MessageList({
@@ -23,6 +24,7 @@ export function MessageList({
   onReact,
   onDelete,
   onSeen,
+  onScrollToMessage,
 }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -41,6 +43,14 @@ export function MessageList({
       onSeen(lastMsg._id);
     }
   }, [messages]);
+
+  function handleScrollToMessage(id: string) {
+    const el = document.querySelector(`[data-message-id="${id}"]`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    el.classList.add("ring-2", "ring-violet-400", "rounded-2xl");
+    setTimeout(() => el.classList.remove("ring-2", "ring-violet-400", "rounded-2xl"), 1200);
+  }
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto py-3 sm:py-4 px-2 sm:px-4 space-y-0.5">
@@ -68,6 +78,7 @@ export function MessageList({
           onReply={onReply}
           onReact={onReact}
           onDelete={onDelete}
+          onScrollToMessage={onScrollToMessage ?? handleScrollToMessage}
         />
       ))}
 
