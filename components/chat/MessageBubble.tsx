@@ -19,9 +19,10 @@ interface Props {
   onReact: (messageId: string, emoji: string) => void;
   onDelete: (messageId: string) => void;
   onScrollToMessage: (id: string) => void;
+  highlighted?: boolean;
 }
 
-export function MessageBubble({ message, isOwn, userName, onReply, onReact, onDelete, onScrollToMessage }: Props) {
+export function MessageBubble({ message, isOwn, userName, onReply, onReact, onDelete, onScrollToMessage, highlighted }: Props) {
   const [showActions, setShowActions] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [swipeX, setSwipeX] = useState(0);
@@ -123,7 +124,9 @@ export function MessageBubble({ message, isOwn, userName, onReply, onReact, onDe
         data-message-id={message._id}
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`flex gap-2 group px-2 sm:px-4 ${isOwn ? "flex-row-reverse" : "flex-row"} mb-1`}
+        className={`flex gap-2 group px-2 sm:px-4 ${isOwn ? "flex-row-reverse" : "flex-row"} mb-1 rounded-2xl transition-shadow ${
+          highlighted ? "ring-2 ring-violet-400" : ""
+        }`}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         onTouchStart={handleTouchStart}
@@ -143,15 +146,15 @@ export function MessageBubble({ message, isOwn, userName, onReply, onReact, onDe
 
           {message.replyTo && (
             <button
-              onClick={() => onScrollToMessage((message.replyTo as any)._id)}
+              onClick={() => onScrollToMessage(message.replyTo!._id)}
               className={`text-xs text-slate-400 border-l-2 border-violet-500/60 pl-2 mb-1 truncate max-w-full text-left hover:text-violet-300 transition ${
                 isOwn ? "text-right border-r-2 border-l-0 pr-2" : ""
               }`}
             >
-              ↩ {(message.replyTo as any).senderName}:{" "}
-              {(message.replyTo as any).deletedAt
+              ↩ {message.replyTo!.senderName}:{" "}
+              {message.replyTo!.deletedAt
                 ? "Deleted"
-                : (message.replyTo as any).content?.slice(0, 40)}
+                : message.replyTo!.content?.slice(0, 40)}
             </button>
           )}
 

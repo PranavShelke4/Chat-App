@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MessageDoc } from "@/types";
 import { MessageBubble } from "./MessageBubble";
 import { TypingIndicator } from "./TypingIndicator";
@@ -27,6 +27,7 @@ export function MessageList({
   onScrollToMessage,
 }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -48,8 +49,8 @@ export function MessageList({
     const el = document.querySelector(`[data-message-id="${id}"]`);
     if (!el) return;
     el.scrollIntoView({ behavior: "smooth", block: "center" });
-    el.classList.add("ring-2", "ring-violet-400", "rounded-2xl");
-    setTimeout(() => el.classList.remove("ring-2", "ring-violet-400", "rounded-2xl"), 1200);
+    setHighlightedId(id);
+    setTimeout(() => setHighlightedId(null), 1200);
   }
 
   return (
@@ -79,6 +80,7 @@ export function MessageList({
           onReact={onReact}
           onDelete={onDelete}
           onScrollToMessage={onScrollToMessage ?? handleScrollToMessage}
+          highlighted={highlightedId === msg._id}
         />
       ))}
 
