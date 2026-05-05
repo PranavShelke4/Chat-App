@@ -36,6 +36,8 @@ export function useRoom({ roomCode, userName: initialUserName, password }: UseRo
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
 
+  const hasMoreRef = useRef(true);
+  const loadingMoreRef = useRef(false);
   const userNameRef = useRef(initialUserName);
   const pusherRef = useRef<PusherClient | null>(null);
   const channelRef = useRef<any>(null);
@@ -63,6 +65,7 @@ export function useRoom({ roomCode, userName: initialUserName, password }: UseRo
       setRoom(data.room);
       setMessages(data.messages);
       setHasMore(data.messages.length === 50);
+      hasMoreRef.current = data.messages.length === 50;
 
       const pusher = new PusherClient(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
         cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
@@ -225,8 +228,9 @@ export function useRoom({ roomCode, userName: initialUserName, password }: UseRo
   );
 
   const loadMoreMessages = useCallback(async (oldestMessageId: string) => {
-    if (loadingMore || !hasMore) return;
+    if (loadingMoreRef.current || !hasMoreRef.current) return;
     setLoadingMore(true);
+    loadingMoreRef.current = true;
     try {
       const password = sessionStorage.getItem(`room_otp_${roomCode}`) ?? undefined;
       const params = new URLSearchParams({ roomCode, before: oldestMessageId });
@@ -235,13 +239,15 @@ export function useRoom({ roomCode, userName: initialUserName, password }: UseRo
       if (!res.ok) return;
       const data = await res.json();
       setMessages((prev) => [...data.messages, ...prev]);
-      setHasMore(data.hasMore);
+      setHasMore(data.hasMore === true);
+      hasMoreRef.current = data.hasMore === true;
     } catch {
       // silently ignore — user can scroll up again to retry
     } finally {
       setLoadingMore(false);
+      loadingMoreRef.current = false;
     }
-  }, [roomCode, loadingMore, hasMore]);
+  }, [roomCode]);
 
   const sendTypingStart = useCallback(() => {
     channelRef.current?.trigger("client-typing-start", { userName: userNameRef.current });
