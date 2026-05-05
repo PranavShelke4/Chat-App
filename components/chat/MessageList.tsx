@@ -38,6 +38,7 @@ export function MessageList({
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
 
   useEffect(() => {
+    if (prevScrollHeightRef.current !== 0) return;
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length, typingUsers.length]);
 
