@@ -85,7 +85,7 @@ export function MessageList({
       prevScrollHeightRef.current = container.scrollHeight;
       onLoadMore(messages[0]._id);
     }
-  }, [hasMore, loadingMore, messages, onLoadMore]);
+  }, [hasMore, loadingMore, messages.length, messages[0]?._id, onLoadMore]);
 
   return (
     <div
