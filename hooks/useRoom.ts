@@ -33,6 +33,8 @@ export function useRoom({ roomCode, userName: initialUserName, password }: UseRo
   const [roomError, setRoomError] = useState<string | null>(null);
   const [kicked, setKicked] = useState(false);
   const [currentUserName, setCurrentUserName] = useState(initialUserName);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const userNameRef = useRef(initialUserName);
   const pusherRef = useRef<PusherClient | null>(null);
@@ -60,6 +62,7 @@ export function useRoom({ roomCode, userName: initialUserName, password }: UseRo
 
       setRoom(data.room);
       setMessages(data.messages);
+      setHasMore(data.messages.length === 50);
 
       const pusher = new PusherClient(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
         cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
@@ -221,6 +224,25 @@ export function useRoom({ roomCode, userName: initialUserName, password }: UseRo
     [roomCode]
   );
 
+  const loadMoreMessages = useCallback(async (oldestMessageId: string) => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const password = sessionStorage.getItem(`room_otp_${roomCode}`) ?? undefined;
+      const params = new URLSearchParams({ roomCode, before: oldestMessageId });
+      if (password) params.set("password", password);
+      const res = await fetch(`/api/messages?${params}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setMessages((prev) => [...data.messages, ...prev]);
+      setHasMore(data.hasMore);
+    } catch {
+      // silently ignore — user can scroll up again to retry
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [roomCode, loadingMore, hasMore]);
+
   const sendTypingStart = useCallback(() => {
     channelRef.current?.trigger("client-typing-start", { userName: userNameRef.current });
   }, []);
@@ -294,6 +316,9 @@ export function useRoom({ roomCode, userName: initialUserName, password }: UseRo
     roomError,
     kicked,
     currentUserName,
+    hasMore,
+    loadingMore,
+    loadMoreMessages,
     sendMessage,
     sendTypingStart,
     sendTypingStop,
