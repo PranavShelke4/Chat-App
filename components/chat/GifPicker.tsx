@@ -22,6 +22,7 @@ export function GifPicker({ onSelect, onClose }: Props) {
   const [loading, setLoading] = useState(true);
   const searchTimer = useRef<NodeJS.Timeout | undefined>(undefined);
   const abortRef = useRef<AbortController | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchGifs("");
@@ -30,6 +31,16 @@ export function GifPicker({ onSelect, onClose }: Props) {
       abortRef.current?.abort();
     };
   }, []);
+
+  useEffect(() => {
+    function handleOutsideClick(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    }
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [onClose]);
 
   async function fetchGifs(q: string) {
     abortRef.current?.abort();
@@ -55,7 +66,7 @@ export function GifPicker({ onSelect, onClose }: Props) {
   }
 
   return (
-    <div className="absolute bottom-full mb-2 right-0 w-72 sm:w-80 bg-slate-900 border border-slate-700/60 rounded-2xl shadow-2xl z-30 overflow-hidden">
+    <div ref={containerRef} className="absolute bottom-full mb-2 right-0 w-72 sm:w-80 bg-slate-900 border border-slate-700/60 rounded-2xl shadow-2xl z-30 overflow-hidden">
       <div className="p-2.5 border-b border-slate-800">
         <input
           autoFocus

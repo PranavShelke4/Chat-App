@@ -58,6 +58,7 @@ export function MessageInput({
     onSend({ type: "text", content: text.trim(), replyTo: replyTo?._id });
     setText("");
     onCancelReply();
+    setShowGifPicker(false);
     clearTimeout(typingTimer.current);
     onTypingStop();
     isTyping.current = false;
@@ -88,6 +89,7 @@ export function MessageInput({
       setUploading(false);
       setUploadProgress("");
       if (fileRef.current) fileRef.current.value = "";
+      setShowGifPicker(false);
     }
   }
 
@@ -154,7 +156,11 @@ export function MessageInput({
         <button
           onClick={() => setShowGifPicker((p) => !p)}
           disabled={uploading}
-          className="w-10 h-10 sm:w-9 sm:h-9 flex-shrink-0 self-end sm:self-auto flex items-center justify-center rounded-2xl sm:rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700/50 text-slate-400 hover:text-violet-400 transition disabled:opacity-50 text-xs font-bold tracking-tight"
+          className={`w-10 h-10 sm:w-9 sm:h-9 flex-shrink-0 self-end sm:self-auto flex items-center justify-center rounded-2xl sm:rounded-xl border border-slate-700/50 transition disabled:opacity-50 text-xs font-bold tracking-tight ${
+            showGifPicker
+              ? "bg-slate-700 text-violet-400"
+              : "bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-violet-400"
+          }`}
         >
           GIF
         </button>
@@ -187,15 +193,14 @@ export function MessageInput({
       </div>
 
       {showGifPicker && (
-        <div className="absolute bottom-full right-0 left-0 flex justify-end px-2.5 sm:px-3">
-          <GifPicker
-            onSelect={(url) => {
-              onSend({ type: "text", content: url, replyTo: replyTo?._id });
-              onCancelReply();
-            }}
-            onClose={() => setShowGifPicker(false)}
-          />
-        </div>
+        <GifPicker
+          onSelect={(url) => {
+            onSend({ type: "text", content: url, replyTo: replyTo?._id });
+            onCancelReply();
+            setShowGifPicker(false);
+          }}
+          onClose={() => setShowGifPicker(false)}
+        />
       )}
     </div>
   );
