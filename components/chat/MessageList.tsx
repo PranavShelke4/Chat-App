@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { MessageDoc } from "@/types";
 import { MessageBubble } from "./MessageBubble";
 import { TypingIndicator } from "./TypingIndicator";
@@ -35,10 +35,14 @@ export function MessageList({
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const prevScrollHeightRef = useRef<number>(0);
+  const isPaginatingRef = useRef(false);
+  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
 
+  useEffect(() => () => clearTimeout(highlightTimerRef.current), []);
+
   useEffect(() => {
-    if (prevScrollHeightRef.current !== 0) return;
+    if (isPaginatingRef.current) return;
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length, typingUsers.length]);
 
@@ -52,32 +56,36 @@ export function MessageList({
     ) {
       onSeen(lastMsg._id);
     }
-  }, [messages]);
+  }, [messages.length, onSeen, userName]);
 
   useEffect(() => {
+    if (!isPaginatingRef.current) return;
     const container = containerRef.current;
-    if (!container || prevScrollHeightRef.current === 0) return;
+    if (!container) return;
     const diff = container.scrollHeight - prevScrollHeightRef.current;
     if (diff > 0) container.scrollTop += diff;
     prevScrollHeightRef.current = 0;
+    isPaginatingRef.current = false;
   }, [messages.length]);
 
-  function handleScrollToMessage(id: string) {
-    const el = document.querySelector(`[data-message-id="${id}"]`);
+  const handleScrollToMessage = useCallback((id: string) => {
+    const el = containerRef.current?.querySelector(`[data-message-id="${id}"]`);
     if (!el) return;
     el.scrollIntoView({ behavior: "smooth", block: "center" });
     setHighlightedId(id);
-    setTimeout(() => setHighlightedId(null), 1200);
-  }
+    clearTimeout(highlightTimerRef.current);
+    highlightTimerRef.current = setTimeout(() => setHighlightedId(null), 1200);
+  }, []);
 
-  function handleScroll() {
+  const handleScroll = useCallback(() => {
     const container = containerRef.current;
     if (!container) return;
     if (container.scrollTop < 100 && hasMore && !loadingMore && messages.length > 0) {
+      isPaginatingRef.current = true;
       prevScrollHeightRef.current = container.scrollHeight;
       onLoadMore(messages[0]._id);
     }
-  }
+  }, [hasMore, loadingMore, messages, onLoadMore]);
 
   return (
     <div
@@ -91,7 +99,7 @@ export function MessageList({
         </div>
       )}
 
-      {!hasMore && messages.length > 0 && (
+      {!hasMore && !loadingMore && messages.length > 0 && (
         <div className="flex items-center gap-3 py-3 px-2">
           <div className="flex-1 h-px bg-slate-800" />
           <span className="text-xs text-slate-600 flex-shrink-0">Beginning of conversation</span>
