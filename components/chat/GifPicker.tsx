@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from "react";
 interface GifResult {
   id: string;
   images: {
-    fixed_height_small: { url: string; width: string; height: string };
+    fixed_height_small: { url: string };
     original: { url: string };
   };
   title: string;
@@ -19,21 +19,29 @@ interface Props {
 export function GifPicker({ onSelect, onClose }: Props) {
   const [query, setQuery] = useState("");
   const [gifs, setGifs] = useState<GifResult[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const searchTimer = useRef<NodeJS.Timeout | undefined>(undefined);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     fetchGifs("");
+    return () => {
+      clearTimeout(searchTimer.current);
+      abortRef.current?.abort();
+    };
   }, []);
 
   async function fetchGifs(q: string) {
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
     setLoading(true);
     try {
-      const res = await fetch(`/api/giphy?q=${encodeURIComponent(q)}`);
+      const url = q ? `/api/giphy?q=${encodeURIComponent(q)}` : `/api/giphy`;
+      const res = await fetch(url, { signal: abortRef.current.signal });
       const json = await res.json();
       setGifs(json.data ?? []);
-    } catch {
-      setGifs([]);
+    } catch (e) {
+      if ((e as DOMException).name !== "AbortError") setGifs([]);
     } finally {
       setLoading(false);
     }
