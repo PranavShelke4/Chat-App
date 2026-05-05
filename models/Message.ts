@@ -20,7 +20,7 @@ export interface IMessage extends Document {
 
 const MessageSchema = new Schema<IMessage>(
   {
-    roomCode: { type: String, required: true, index: true },
+    roomCode: { type: String, required: true },
     senderName: { type: String, required: true },
     type: {
       type: String,
@@ -41,6 +41,8 @@ const MessageSchema = new Schema<IMessage>(
   },
   { timestamps: true }
 );
+
+MessageSchema.index({ roomCode: 1, _id: -1 });
 
 export const Message =
   mongoose.models.Message || mongoose.model<IMessage>("Message", MessageSchema);

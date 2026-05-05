@@ -232,10 +232,11 @@ export function useRoom({ roomCode, userName: initialUserName, password }: UseRo
     setLoadingMore(true);
     loadingMoreRef.current = true;
     try {
-      const password = sessionStorage.getItem(`room_otp_${roomCode}`) ?? undefined;
+      const password = sessionStorage.getItem(`room_otp_${roomCode}`);
       const params = new URLSearchParams({ roomCode, before: oldestMessageId });
-      if (password) params.set("password", password);
-      const res = await fetch(`/api/messages?${params}`);
+      const headers: Record<string, string> = {};
+      if (password) headers["x-room-password"] = password;
+      const res = await fetch(`/api/messages?${params}`, { headers });
       if (!res.ok) return;
       const data = await res.json();
       setMessages((prev) => [...data.messages, ...prev]);

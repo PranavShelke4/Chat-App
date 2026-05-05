@@ -90,7 +90,7 @@ export async function GET(req: NextRequest) {
   try {
     const roomCode = req.nextUrl.searchParams.get("roomCode")?.toUpperCase();
     const before = req.nextUrl.searchParams.get("before");
-    const password = req.nextUrl.searchParams.get("password") ?? undefined;
+    const password = req.headers.get("x-room-password") ?? undefined;
     const limit = 50;
 
     if (!roomCode || !before) {
